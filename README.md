@@ -54,31 +54,37 @@ It's a reference, not precious — **rip out the pieces you need.**
    **tools** (function calling) so the model can read/write your data. Swap model
    in `.env` (`AI_MODEL`, `AI_PROVIDER`) with zero code change.
 
-### Add an AI tool (function calling) — the highest-leverage upgrade
+### AI tool-calling is already wired (this is usually what wins "AI vibe coding")
 
-In `src/app/api/chat/route.ts`, give `streamText` a `tools` map so the agent can
-actually *do* things (query your DB, hit an API). This is usually what wins
-"AI vibe coding" briefs — a chat that performs actions, not just talks.
+`src/app/api/chat/route.ts` gives `streamText` a `tools` map so the agent doesn't
+just talk — it **operates the app**. Two live tools ship in the box:
+`createNote` (writes to the DB, optionally pins to the map) and `listNotes`
+(reads). `stopWhen: stepCountIs(5)` lets the model call a tool, see the result,
+then reply. The chat UI renders each tool call as a status chip, and on finish it
+invalidates the tRPC queries so the **map and chart update live**.
+
+Try it: open the **AI Chat** tab and type *"save a note pinned to the Grote Markt
+in Haarlem"* — watch the pin appear on the Build tab.
+
+Add your own tool by dropping another entry in the `tools` map:
 
 ```ts
 import { tool, stepCountIs } from "ai";
 import { z } from "zod";
 import { db } from "~/server/db";
 
-const result = streamText({
-  model: getModel(),
-  system: SYSTEM_PROMPT,
-  messages: await convertToModelMessages(messages),
-  stopWhen: stepCountIs(5),
-  tools: {
-    createNote: tool({
-      description: "Save a note, optionally pinned to a location",
-      inputSchema: z.object({ title: z.string(), lat: z.number().optional(), lng: z.number().optional() }),
-      execute: async (input) => db.note.create({ data: input }),
-    }),
-  },
-});
+tools: {
+  // ...existing createNote / listNotes...
+  deleteNote: tool({
+    description: "Delete a note by id",
+    inputSchema: z.object({ id: z.string() }),
+    execute: async ({ id }) => db.note.delete({ where: { id } }),
+  }),
+},
 ```
+
+The same pattern calls any external API (geocoding, search, payments sandbox) —
+just `fetch` inside `execute` and return JSON the model can reason about.
 
 ## 3. Deploying (if a demo URL helps your pitch)
 

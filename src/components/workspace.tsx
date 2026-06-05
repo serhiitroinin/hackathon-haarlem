@@ -173,11 +173,19 @@ export function Workspace() {
           <CardHeader>
             <CardTitle>AI assistant</CardTitle>
             <CardDescription>
-              Streaming via the AI SDK. Swap the model in <code>.env</code>.
+              Streaming + tool-calling. Ask it to save a pinned note — it runs a
+              real DB tool and the map/chart update live.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Chat />
+            <Chat
+              onResult={() =>
+                void Promise.all([
+                  utils.note.list.invalidate(),
+                  utils.note.countByDay.invalidate(),
+                ])
+              }
+            />
           </CardContent>
         </Card>
       </TabsContent>
