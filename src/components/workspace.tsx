@@ -173,8 +173,8 @@ export function Workspace() {
           <CardHeader>
             <CardTitle>AI assistant</CardTitle>
             <CardDescription>
-              Streaming + tool-calling. Ask it to save a pinned note — it runs a
-              real DB tool and the map/chart update live.
+              Streaming, tool-calling &amp; generative UI. Ask for a summary — the
+              agent renders an animated card, not text. Pinned notes hit the map live.
             </CardDescription>
           </CardHeader>
           <CardContent>

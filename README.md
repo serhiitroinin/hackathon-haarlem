@@ -86,6 +86,36 @@ tools: {
 The same pattern calls any external API (geocoding, search, payments sandbox) —
 just `fetch` inside `execute` and return JSON the model can reason about.
 
+### Generative UI — the agent renders components, not text
+
+Tool *output* is rendered as a real animated React component instead of a wall of
+text. The `summarizeNotes` tool returns stats; the chat draws a
+`NotesSummaryCard` (Motion-animated bars + NumberFlow counters). `createNote`
+returns a `NoteCreatedCard` with a spring entrance. This is the
+constrain-don't-free-code pattern: the model picks a tool, the **app** decides
+the UI.
+
+- Components: `src/components/chat/generative/*`
+- Registry (tool name → component): `src/components/chat/generative/registry.tsx`
+- Motion entrances + `AnimatePresence` live in `src/components/chat/chat.tsx`
+
+Give a new tool a visual in one line — add it to the `renderers` map in
+`registry.tsx`:
+
+```tsx
+const renderers = {
+  createNote: (o) => <NoteCreatedCard {...(o as NoteCreatedOutput)} />,
+  summarizeNotes: (o) => <NotesSummaryCard {...(o as NotesSummaryOutput)} />,
+  // myTool: (o) => <MyCard {...(o as MyOutput)} />,
+};
+```
+
+Try it: open **AI Chat**, save a couple of pinned notes, then ask
+*"give me a summary of my notes."*
+
+**Motion** (`motion/react`, v12) + **NumberFlow** (`@number-flow/react`) are
+installed and ready for any other interaction-craft you want to add.
+
 ## 3. Deploying (if a demo URL helps your pitch)
 
 SQLite is local-only. To deploy on Vercel:

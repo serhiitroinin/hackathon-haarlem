@@ -3,8 +3,10 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { ArrowUp, Check, CircleAlert, Loader2, Square, Wrench } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 
+import { renderToolOutput } from "~/components/chat/generative/registry";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
@@ -14,27 +16,53 @@ import { cn } from "~/lib/utils";
 type ToolPart = {
   type: string;
   state?: "input-streaming" | "input-available" | "output-available" | "output-error";
+  output?: unknown;
   errorText?: string;
 };
 
-function ToolCall({ part }: { part: ToolPart }) {
+/** Status chip shown while a tool runs or if it errors. */
+function ToolChip({ part }: { part: ToolPart }) {
   const name = part.type.replace(/^tool-/, "");
-  const done = part.state === "output-available";
   const failed = part.state === "output-error";
   return (
-    <div className="text-muted-foreground flex items-center gap-2 rounded-lg border bg-accent/40 px-3 py-1.5 text-xs">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="text-muted-foreground bg-accent/40 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs"
+    >
       {failed ? (
-        <CircleAlert className="h-3.5 w-3.5 text-destructive" />
-      ) : done ? (
-        <Check className="h-3.5 w-3.5 text-emerald-500" />
+        <CircleAlert className="text-destructive h-3.5 w-3.5" />
       ) : (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
       )}
       <Wrench className="h-3 w-3" />
       <span className="text-foreground font-medium">{name}</span>
-      <span>{failed ? "failed" : done ? "done" : "running…"}</span>
-    </div>
+      <span>{failed ? "failed" : "running…"}</span>
+    </motion.div>
   );
+}
+
+/** Renders a tool part: generative component when done, else a status chip. */
+function ToolPartView({ part }: { part: ToolPart }) {
+  if (part.state === "output-available") {
+    const name = part.type.replace(/^tool-/, "");
+    const ui = renderToolOutput(name, part.output);
+    if (ui) return <>{ui}</>;
+    // No dedicated renderer — show a "done" chip.
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="text-muted-foreground bg-accent/40 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs"
+      >
+        <Check className="h-3.5 w-3.5 text-emerald-500" />
+        <Wrench className="h-3 w-3" />
+        <span className="text-foreground font-medium">{name}</span>
+        <span>done</span>
+      </motion.div>
+    );
+  }
+  return <ToolChip part={part} />;
 }
 
 export function Chat({ onResult }: { onResult?: () => void }) {
@@ -61,42 +89,49 @@ export function Chat({ onResult }: { onResult?: () => void }) {
         <div className="flex flex-col gap-3 py-2">
           {messages.length === 0 && (
             <p className="text-muted-foreground py-8 text-center text-sm">
-              Ask the assistant anything — or try{" "}
+              Try{" "}
               <em>&ldquo;save a note pinned to the Grote Markt in Haarlem&rdquo;</em>{" "}
-              to watch it call a tool and drop a pin on the map.
+              then <em>&ldquo;give me a summary of my notes&rdquo;</em> — the agent
+              calls tools and renders animated UI instead of text.
             </p>
           )}
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              className={cn(
-                "flex flex-col gap-1",
-                m.role === "user" ? "items-end" : "items-start",
-              )}
-            >
-              {m.parts.map((part, i) => {
-                if (part.type === "text") {
-                  return (
-                    <div
-                      key={i}
-                      className={cn(
-                        "max-w-[85%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap",
-                        m.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted",
-                      )}
-                    >
-                      {part.text}
-                    </div>
-                  );
-                }
-                if (part.type.startsWith("tool-")) {
-                  return <ToolCall key={i} part={part as ToolPart} />;
-                }
-                return null;
-              })}
-            </div>
-          ))}
+          <AnimatePresence initial={false}>
+            {messages.map((m) => (
+              <motion.div
+                key={m.id}
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 500, damping: 34 }}
+                className={cn(
+                  "flex flex-col gap-1.5",
+                  m.role === "user" ? "items-end" : "items-start",
+                )}
+              >
+                {m.parts.map((part, i) => {
+                  if (part.type === "text") {
+                    return (
+                      <div
+                        key={i}
+                        className={cn(
+                          "max-w-[85%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap",
+                          m.role === "user"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted",
+                        )}
+                      >
+                        {part.text}
+                      </div>
+                    );
+                  }
+                  if (part.type.startsWith("tool-")) {
+                    return <ToolPartView key={i} part={part as ToolPart} />;
+                  }
+                  return null;
+                })}
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       </ScrollArea>
 
