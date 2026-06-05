@@ -1,0 +1,30 @@
+// Prisma schema. Docs: https://pris.ly/d/prisma-schema
+// SQLite for zero-infra local dev. To deploy on Vercel, switch `provider` to
+// "postgresql" and point DATABASE_URL at a Neon/Supabase connection string.
+
+generator client {
+    provider = "prisma-client-js"
+    output   = "../generated/prisma"
+}
+
+datasource db {
+    provider = "sqlite"
+    url      = env("DATABASE_URL")
+}
+
+// One shared entity the whole demo hangs off of:
+//  - the editor creates/edits `content`
+//  - the map plots notes that have lat/lng
+//  - the chart aggregates notes by day
+//  - the chat agent can read/write these via a tool (see src/server/api/routers/note.ts)
+model Note {
+    id        String   @id @default(cuid())
+    title     String
+    content   String   @default("")
+    lat       Float?
+    lng       Float?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([createdAt])
+}
