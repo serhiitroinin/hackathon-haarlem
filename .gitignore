@@ -49,3 +49,5 @@ yarn-error.log*
 .idea
 # Generated training files
 /public/generated
+
+.npmrc
