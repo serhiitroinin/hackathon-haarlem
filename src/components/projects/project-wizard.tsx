@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { GoogleDriveButton, GoogleG } from "~/components/google/google-drive-picker";
+import { type DriveFileContent } from "~/lib/google/fake-drive";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -44,16 +46,19 @@ export function ProjectWizard({ collapsed }: { collapsed?: boolean }) {
   const [title, setTitle] = useState("");
   const [context, setContext] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [driveFiles, setDriveFiles] = useState<DriveFileContent[]>([]);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const create = api.project.create.useMutation();
+  const driveImport = api.drive.importToProject.useMutation();
 
   function reset() {
     setStep(1);
     setTitle("");
     setContext("");
     setFiles([]);
+    setDriveFiles([]);
     setBusy(false);
   }
 
@@ -78,6 +83,11 @@ export function ProjectWizard({ collapsed }: { collapsed?: boolean }) {
         for (const f of files) form.append("files", f);
         const res = await fetch("/api/upload", { method: "POST", body: form });
         if (!res.ok) toast.error("Some files failed to upload");
+      }
+      if (driveFiles.length) {
+        await driveImport
+          .mutateAsync({ projectId: project.id, fileIds: driveFiles.map((f) => f.id) })
+          .catch(() => toast.error("Some Drive files failed to import"));
       }
       await utils.project.list.invalidate();
       toast.success(`Project “${project.title}” created`);
@@ -132,7 +142,21 @@ export function ProjectWizard({ collapsed }: { collapsed?: boolean }) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="project-context">Initial context</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="project-context">Initial context</Label>
+                {/* Inline use of file CONTENT: pull a doc's text straight into this field. */}
+                <GoogleDriveButton
+                  variant="ghost"
+                  size="sm"
+                  label="Insert from Drive"
+                  className="h-7 px-2 text-[11px]"
+                  onImport={(files) =>
+                    setContext((c) =>
+                      [c.trim(), ...files.map((f) => f.text)].filter(Boolean).join("\n\n"),
+                    )
+                  }
+                />
+              </div>
               <Textarea
                 id="project-context"
                 placeholder="Who is the organization, what's the case, what are we trying to achieve…"
@@ -196,6 +220,45 @@ export function ProjectWizard({ collapsed }: { collapsed?: boolean }) {
                     <button
                       type="button"
                       onClick={() => setFiles((p) => p.filter((_, j) => j !== i))}
+                      className="text-muted-foreground hover:text-foreground"
+                      aria-label="Remove"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Google Drive */}
+            <div className="mt-2 flex items-center gap-2">
+              <div className="bg-border h-px flex-1" />
+              <span className="text-muted-foreground text-[10px] uppercase">or</span>
+              <div className="bg-border h-px flex-1" />
+            </div>
+            <GoogleDriveButton
+              full
+              className="mt-2"
+              onImport={(picked) =>
+                setDriveFiles((prev) => {
+                  const ids = new Set(prev.map((p) => p.id));
+                  return [...prev, ...picked.filter((p) => !ids.has(p.id))];
+                })
+              }
+            />
+            {driveFiles.length > 0 && (
+              <ul className="mt-2 space-y-1.5">
+                {driveFiles.map((f) => (
+                  <li
+                    key={f.id}
+                    className="flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-sm"
+                  >
+                    <GoogleG size={14} />
+                    <span className="min-w-0 flex-1 truncate">{f.name}</span>
+                    <span className="text-muted-foreground text-xs">Drive</span>
+                    <button
+                      type="button"
+                      onClick={() => setDriveFiles((p) => p.filter((d) => d.id !== f.id))}
                       className="text-muted-foreground hover:text-foreground"
                       aria-label="Remove"
                     >

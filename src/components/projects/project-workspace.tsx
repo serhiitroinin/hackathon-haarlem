@@ -14,6 +14,7 @@ import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Chat } from "~/components/chat/chat";
+import { GoogleDriveButton } from "~/components/google/google-drive-picker";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -45,6 +46,16 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
 
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const driveImport = api.drive.importToProject.useMutation({
+    onSuccess: async (res) => {
+      await Promise.all([
+        utils.source.list.invalidate({ projectId }),
+        utils.project.list.invalidate(),
+      ]);
+      toast.success(`Imported ${res.created} file${res.created === 1 ? "" : "s"} from Drive`);
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const del = api.source.delete.useMutation({
     onSuccess: () => {
@@ -187,6 +198,19 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                 if (e.target.files?.length) void upload(e.target.files);
                 e.target.value = "";
               }}
+            />
+            <div className="mt-2 flex items-center gap-2">
+              <div className="bg-border h-px flex-1" />
+              <span className="text-muted-foreground text-[10px] uppercase">or</span>
+              <div className="bg-border h-px flex-1" />
+            </div>
+            <GoogleDriveButton
+              full
+              className="mt-2"
+              disabled={driveImport.isPending}
+              onImport={(files) =>
+                driveImport.mutate({ projectId, fileIds: files.map((f) => f.id) })
+              }
             />
           </div>
 
