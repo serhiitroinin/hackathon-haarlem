@@ -3,23 +3,38 @@
 import {
   AlertTriangle,
   Check,
+  CloudUpload,
+  Download,
   Filter,
+  History,
   Info,
+  Loader2,
   Plus,
   Presentation,
   RotateCcw,
+  Save,
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { ThemeToggle } from "~/components/theme-toggle";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { Label } from "~/components/ui/label";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
+import { api } from "~/trpc/react";
 
 import { analyzeSlide, slideStatus, type Issue } from "./attention";
 import { SAMPLE_DECK } from "./sample-deck";
@@ -75,15 +90,41 @@ function elementLabel(id: string): string {
   return "Element";
 }
 
-export function SlideBuilder() {
-  const [deck, setDeck] = useState<Deck>(SAMPLE_DECK);
+type Persistence = { kind: "local" } | { kind: "project"; deckId: string };
+
+export function SlideBuilder({
+  initialDeck,
+  persistence = { kind: "local" },
+  backHref = "/",
+}: {
+  initialDeck?: Deck;
+  persistence?: Persistence;
+  backHref?: string;
+}) {
+  const isProject = persistence.kind === "project";
+  const deckId = persistence.kind === "project" ? persistence.deckId : "";
+
+  const [deck, setDeck] = useState<Deck>(initialDeck ?? SAMPLE_DECK);
   const [active, setActive] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [onlyFlagged, setOnlyFlagged] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [exporting, setExporting] = useState(false);
   const [previewRef, previewWidth] = useWidth<HTMLDivElement>();
 
+  const utils = api.useUtils();
+  const save = api.deck.save.useMutation();
+  const snapshot = api.deck.snapshot.useMutation();
+  const restore = api.deck.restore.useMutation();
+  const versions = api.deck.versions.useQuery({ deckId }, { enabled: isProject });
+
+  // Local mode: load/persist from localStorage.
   useEffect(() => {
+    if (isProject) {
+      setHydrated(true);
+      return;
+    }
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setDeck(JSON.parse(raw) as Deck);
@@ -91,10 +132,79 @@ export function SlideBuilder() {
       /* ignore */
     }
     setHydrated(true);
-  }, []);
+  }, [isProject]);
+
+  // Persist on change — localStorage (local) or debounced DB save (project).
+  const firstSave = useRef(true);
   useEffect(() => {
-    if (hydrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(deck));
-  }, [deck, hydrated]);
+    if (!hydrated) return;
+    if (!isProject) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(deck));
+      return;
+    }
+    if (firstSave.current) {
+      firstSave.current = false;
+      return; // don't re-save the freshly-loaded deck
+    }
+    setSaveState("saving");
+    const t = setTimeout(() => {
+      save.mutate(
+        { deckId, slides: deck.slides, title: deck.title },
+        { onSuccess: () => setSaveState("saved") },
+      );
+    }, 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deck, hydrated, isProject, deckId]);
+
+  function saveVersion() {
+    snapshot.mutate(
+      { deckId, label: `${deck.slides.length} slides` },
+      {
+        onSuccess: () => {
+          void utils.deck.versions.invalidate({ deckId });
+          toast.success("Version saved");
+        },
+      },
+    );
+  }
+
+  function restoreVersion(versionId: string) {
+    restore.mutate(
+      { deckId, versionId },
+      {
+        onSuccess: (d) => {
+          setDeck({ title: d.title, slides: d.slides as unknown as Slide[] });
+          setActive(0);
+          setSelected(null);
+          toast.success("Version restored");
+        },
+      },
+    );
+  }
+
+  async function exportPptx() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/deck/export", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ deck }),
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${deck.title || "maverx-deck"}.pptx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const slide = deck.slides[active];
 
@@ -185,21 +295,81 @@ export function SlideBuilder() {
               <Check className="h-3.5 w-3.5" /> All on-brand
             </span>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5 text-xs"
-            onClick={() => {
-              setDeck(SAMPLE_DECK);
-              setActive(0);
-              setSelected(null);
-            }}
-          >
-            <RotateCcw className="h-3.5 w-3.5" /> Reset
+
+          {isProject && (
+            <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+              {saveState === "saving" ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+                </>
+              ) : saveState === "saved" ? (
+                <>
+                  <CloudUpload className="h-3 w-3" /> Saved
+                </>
+              ) : null}
+            </span>
+          )}
+
+          {isProject && (
+            <>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={saveVersion}>
+                <Save className="h-3.5 w-3.5" /> Save version
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
+                    <History className="h-3.5 w-3.5" /> History
+                    {versions.data && versions.data.length > 0 && (
+                      <span className="text-muted-foreground">({versions.data.length})</span>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-60">
+                  <DropdownMenuLabel>Saved versions</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {(versions.data ?? []).length === 0 && (
+                    <DropdownMenuItem disabled>No versions yet</DropdownMenuItem>
+                  )}
+                  {(versions.data ?? []).map((v) => (
+                    <DropdownMenuItem key={v.id} onClick={() => restoreVersion(v.id)}>
+                      <span className="flex-1 truncate">{v.label || "Snapshot"}</span>
+                      <span className="text-muted-foreground ml-2 text-[10px]">
+                        {new Date(v.createdAt).toLocaleString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+
+          <Button size="sm" className="gap-1.5 text-xs" onClick={exportPptx} disabled={exporting}>
+            {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            Export .pptx
           </Button>
-          <Link href="/">
+
+          {!isProject && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={() => {
+                setDeck(SAMPLE_DECK);
+                setActive(0);
+                setSelected(null);
+              }}
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Reset
+            </Button>
+          )}
+          <Link href={backHref}>
             <Button variant="ghost" size="sm" className="text-xs">
-              ← Projects
+              ← Back
             </Button>
           </Link>
           <ThemeToggle />

@@ -5,6 +5,7 @@ import {
   FileText,
   ImageIcon,
   Loader2,
+  Presentation,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -100,11 +101,18 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
             {totalChars.toLocaleString()} chars of context
           </p>
         </div>
-        <Link href="/maverx">
-          <Button size="sm" disabled={items.length === 0 && !project.data?.context}>
-            Build training <ArrowRight className="ml-1.5 h-4 w-4" />
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/projects/${projectId}/slides`}>
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <Presentation className="h-4 w-4" /> Slides
+            </Button>
+          </Link>
+          <Link href="/maverx">
+            <Button size="sm" disabled={items.length === 0 && !project.data?.context}>
+              Build training <ArrowRight className="ml-1.5 h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
       </header>
 
       {/* Big chat (left) + context panel (right) */}
