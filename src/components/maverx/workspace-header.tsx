@@ -1,8 +1,18 @@
 "use client";
 
-import { Check, GraduationCap } from "lucide-react";
+import { Check, ChevronDown, GraduationCap, Moon, Sun } from "lucide-react";
 import Image from "next/image";
+import { useTheme } from "next-themes";
+import { useState } from "react";
 
+import { Avatar, AvatarFallback } from "~/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { Switch } from "~/components/ui/switch";
 import { cn } from "~/lib/utils";
 
 export interface WorkspaceHeaderProps {
@@ -15,7 +25,22 @@ const STEPS = [
   { number: 3, label: "Your Slides" },
 ] as const;
 
+const MOCK_USER = { name: "Behnam Sepehri", email: "behnam.sep@gmail.com" };
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 export function WorkspaceHeader({ step }: WorkspaceHeaderProps) {
+  const { resolvedTheme, setTheme } = useTheme();
+  const [language, setLanguage] = useState<"en" | "nl">("en");
+  const isDark = resolvedTheme === "dark";
+
   return (
     <div className="border-b bg-card">
       {/* Top navbar */}
@@ -29,19 +54,90 @@ export function WorkspaceHeader({ step }: WorkspaceHeaderProps) {
         {/* Center: company logo */}
         <div className="absolute left-1/2 -translate-x-1/2">
           <Image
-            src="/maverx-logo.png"
+            src={isDark ? "/maverx-logo.png" : "/maverx-logo-black.png"}
             alt="Maverx"
-            width={150}
-            height={48}
-            className="h-12 w-auto object-contain"
+            width={400}
+            height={100}
+            className="h-36 w-auto object-contain"
           />
         </div>
 
-        {/* Right: badge */}
+        {/* Right: user profile */}
         <div className="ml-auto">
-          <span className="bg-primary/10 text-primary rounded-full px-2.5 py-0.5 text-xs font-medium">
-            AI-Powered
-          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Avatar size="sm">
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                    {initials(MOCK_USER.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <ChevronDown className="text-muted-foreground h-3.5 w-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end" className="w-64">
+              {/* User info */}
+              <div className="flex items-center gap-3 px-3 py-3">
+                <Avatar>
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                    {initials(MOCK_USER.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex min-w-0 flex-col">
+                  <span className="truncate text-sm font-medium">{MOCK_USER.name}</span>
+                  <span className="text-muted-foreground truncate text-xs">{MOCK_USER.email}</span>
+                </div>
+              </div>
+
+              <DropdownMenuSeparator />
+
+              {/* Language */}
+              <div className="px-3 py-2.5">
+                <p className="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">
+                  Language
+                </p>
+                <div className="flex gap-1.5">
+                  {(["en", "nl"] as const).map((lang) => (
+                    <button
+                      key={lang}
+                      type="button"
+                      onClick={() => setLanguage(lang)}
+                      className={cn(
+                        "flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                        language === lang
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {lang === "en" ? "English" : "Dutch"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <DropdownMenuSeparator />
+
+              {/* Dark / Light mode */}
+              <div className="flex items-center justify-between px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  {isDark ? (
+                    <Moon className="text-muted-foreground h-3.5 w-3.5" />
+                  ) : (
+                    <Sun className="text-muted-foreground h-3.5 w-3.5" />
+                  )}
+                  <span className="text-sm">{isDark ? "Dark mode" : "Light mode"}</span>
+                </div>
+                <Switch
+                  checked={isDark}
+                  onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+                />
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
