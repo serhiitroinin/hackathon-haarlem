@@ -1,4 +1,5 @@
 import { noteRouter } from "~/server/api/routers/note";
+import { projectRouter } from "~/server/api/routers/project";
 import { sourceRouter } from "~/server/api/routers/source";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
@@ -9,6 +10,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  */
 export const appRouter = createTRPCRouter({
   note: noteRouter,
+  project: projectRouter,
   source: sourceRouter,
 });
 

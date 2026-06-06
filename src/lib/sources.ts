@@ -21,9 +21,11 @@ export type SourceContext = {
  * Used by the ingest chat (to answer about the docs) and the Maverx pipeline
  * (so generated training is informed by the uploaded material).
  */
-export async function getSourcesContext(): Promise<SourceContext> {
+export async function getSourcesContext(
+  projectId?: string,
+): Promise<SourceContext> {
   const sources = await db.source.findMany({
-    where: { text: { not: "" } },
+    where: { text: { not: "" }, ...(projectId ? { projectId } : {}) },
     orderBy: { createdAt: "asc" },
     select: { name: true, text: true },
   });
@@ -32,6 +34,21 @@ export async function getSourcesContext(): Promise<SourceContext> {
   let truncated = false;
   const parts: string[] = [];
 
+  // The project's free-text initial context (from the creation wizard) leads.
+  if (projectId) {
+    const project = await db.project.findUnique({
+      where: { id: projectId },
+      select: { context: true },
+    });
+    const ctx = project?.context?.trim();
+    if (ctx) {
+      const block = `--- Project context ---\n${ctx}`;
+      parts.push(block.slice(0, CONTEXT_CHAR_BUDGET));
+      used += Math.min(block.length, CONTEXT_CHAR_BUDGET);
+    }
+  }
+
+  let docCount = 0;
   for (const s of sources) {
     const remaining = CONTEXT_CHAR_BUDGET - used;
     if (remaining <= 0) {
@@ -46,7 +63,8 @@ export async function getSourcesContext(): Promise<SourceContext> {
     }
     parts.push(header + body);
     used += header.length + body.length;
+    docCount++;
   }
 
-  return { text: parts.join("\n\n"), count: parts.length, truncated };
+  return { text: parts.join("\n\n"), count: docCount, truncated };
 }

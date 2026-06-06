@@ -27,9 +27,10 @@ Be concise. When the user seems ready, point them to the "Build training" button
 everything they've uploaded is automatically passed along as context.`;
 
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
+  const { messages, projectId }: { messages: UIMessage[]; projectId?: string } =
+    await req.json();
 
-  const { text, count, truncated } = await getSourcesContext();
+  const { text, count, truncated } = await getSourcesContext(projectId);
 
   const system =
     count === 0

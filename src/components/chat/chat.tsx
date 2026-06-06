@@ -71,6 +71,7 @@ export function Chat({
   placeholder = "Message the assistant…",
   emptyState,
   className,
+  body,
 }: {
   onResult?: () => void;
   /** Chat endpoint to talk to (defaults to the notes demo route). */
@@ -79,10 +80,12 @@ export function Chat({
   /** Replaces the default starter hint shown before the first message. */
   emptyState?: React.ReactNode;
   className?: string;
+  /** Extra fields merged into every request body (e.g. `{ projectId }`). */
+  body?: Record<string, unknown>;
 }) {
   const [input, setInput] = useState("");
   const { messages, sendMessage, status, stop } = useChat({
-    transport: new DefaultChatTransport({ api }),
+    transport: new DefaultChatTransport({ api, body }),
     // Fires when the assistant turn finishes — refresh anything tools touched.
     onFinish: () => onResult?.(),
   });

@@ -9,25 +9,28 @@ import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
  * NOT returned by `list` (it can be large) — only a short preview.
  */
 export const sourceRouter = createTRPCRouter({
-  list: publicProcedure.query(async ({ ctx }) => {
-    const sources = await ctx.db.source.findMany({
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        kind: true,
-        mimeType: true,
-        bytes: true,
-        chars: true,
-        createdAt: true,
-        text: true,
-      },
-    });
-    return sources.map(({ text, ...s }) => ({
-      ...s,
-      preview: text.slice(0, 240),
-    }));
-  }),
+  list: publicProcedure
+    .input(z.object({ projectId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const sources = await ctx.db.source.findMany({
+        where: { projectId: input.projectId },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          name: true,
+          kind: true,
+          mimeType: true,
+          bytes: true,
+          chars: true,
+          createdAt: true,
+          text: true,
+        },
+      });
+      return sources.map(({ text, ...s }) => ({
+        ...s,
+        preview: text.slice(0, 240),
+      }));
+    }),
 
   delete: publicProcedure
     .input(z.object({ id: z.string() }))
@@ -35,8 +38,12 @@ export const sourceRouter = createTRPCRouter({
       return ctx.db.source.delete({ where: { id: input.id } });
     }),
 
-  clear: publicProcedure.mutation(async ({ ctx }) => {
-    const { count } = await ctx.db.source.deleteMany({});
-    return { count };
-  }),
+  clear: publicProcedure
+    .input(z.object({ projectId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { count } = await ctx.db.source.deleteMany({
+        where: { projectId: input.projectId },
+      });
+      return { count };
+    }),
 });

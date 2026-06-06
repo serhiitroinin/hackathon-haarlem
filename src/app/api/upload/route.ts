@@ -16,10 +16,23 @@ const MAX_BYTES = 20 * 1024 * 1024;
  */
 export async function POST(req: Request) {
   const form = await req.formData();
+  const projectId = form.get("projectId");
   const files = form.getAll("files").filter((f): f is File => f instanceof File);
 
+  if (typeof projectId !== "string" || !projectId) {
+    return Response.json({ error: "Missing projectId" }, { status: 400 });
+  }
   if (files.length === 0) {
     return Response.json({ error: "No files provided" }, { status: 400 });
+  }
+
+  // Make sure the project exists before attaching anything to it.
+  const project = await db.project.findUnique({
+    where: { id: projectId },
+    select: { id: true },
+  });
+  if (!project) {
+    return Response.json({ error: "Project not found" }, { status: 404 });
   }
 
   const created = [];
@@ -40,6 +53,7 @@ export async function POST(req: Request) {
 
       const source = await db.source.create({
         data: {
+          projectId,
           name: file.name,
           kind,
           mimeType: file.type || "application/octet-stream",

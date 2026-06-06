@@ -29,13 +29,29 @@ model Note {
     @@index([createdAt])
 }
 
-// A source document uploaded on the first screen. Its extracted `text` becomes
-// context for the next steps (the Maverx training generation reads these in).
+// A Project is the top-level entity: one organization case we're working on.
+// It holds the initial context plus every uploaded asset, and is what the
+// sidebar lists / the chat is scoped to.
+model Project {
+    id        String   @id @default(cuid())
+    title     String
+    context   String   @default("") // free-text initial context from the wizard
+    sources   Source[]
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([createdAt])
+}
+
+// A source document attached to a project. Its extracted `text` becomes context
+// for the chat and downstream training generation.
 //  - kind: "pdf" | "image" | "text"
 //  - text: extracted/plain text (empty for images we only kept for vision)
 //  - chars: length of `text`, denormalized for quick UI display
 model Source {
     id        String   @id @default(cuid())
+    projectId String
+    project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
     name      String
     kind      String
     mimeType  String
@@ -44,5 +60,6 @@ model Source {
     chars     Int      @default(0)
     createdAt DateTime @default(now())
 
+    @@index([projectId])
     @@index([createdAt])
 }
