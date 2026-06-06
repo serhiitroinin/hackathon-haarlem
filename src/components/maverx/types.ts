@@ -1,3 +1,5 @@
+import type { DriveFileMeta } from "~/lib/google/fake-drive";
+
 export type ToolPart = {
   type: string;
   state?: "input-streaming" | "input-available" | "output-available" | "output-error";
@@ -16,4 +18,5 @@ export interface IntakeFormData {
   duration?: string;
   objective?: string;
   files: File[];
+  driveFiles?: DriveFileMeta[];
 }

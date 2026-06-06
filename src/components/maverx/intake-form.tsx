@@ -6,6 +6,8 @@ import { useRef, useState } from "react";
 
 import type { IntakeFormData, IntakeStepId } from "~/components/maverx/types";
 import { INTAKE_STEPS } from "~/components/maverx/constants";
+import { GoogleDrivePicker, GoogleG } from "~/components/google/google-drive-picker";
+import type { DriveFileMeta } from "~/lib/google/fake-drive";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {
@@ -43,6 +45,8 @@ const REQUIRED_FIELDS: IntakeStepId[] = ["topic", "audience", "level"];
 export function IntakeForm({ onComplete }: IntakeFormProps) {
   const [fields, setFields] = useState<FieldValues>(INITIAL_FIELDS);
   const [files, setFiles] = useState<File[]>([]);
+  const [driveFiles, setDriveFiles] = useState<DriveFileMeta[]>([]);
+  const [drivePicker, setDrivePicker] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -94,6 +98,7 @@ export function IntakeForm({ onComplete }: IntakeFormProps) {
       duration: fields.duration || undefined,
       objective: fields.objective || undefined,
       files,
+      driveFiles: driveFiles.length ? driveFiles : undefined,
     });
   }
 
@@ -237,6 +242,57 @@ export function IntakeForm({ onComplete }: IntakeFormProps) {
                 ))}
               </motion.ul>
             )}
+
+            <div className="mt-2 flex items-center gap-2">
+              <div className="bg-border h-px flex-1" />
+              <span className="text-muted-foreground text-[10px] uppercase">or</span>
+              <div className="bg-border h-px flex-1" />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2 w-full justify-center gap-2"
+              onClick={() => setDrivePicker(true)}
+            >
+              <GoogleG size={15} /> Add from Google Drive
+            </Button>
+            {driveFiles.length > 0 && (
+              <motion.ul
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col gap-1 pt-1"
+              >
+                {driveFiles.map((f) => (
+                  <li
+                    key={f.id}
+                    className="bg-muted/50 flex items-center justify-between rounded-lg px-3 py-1.5 text-xs"
+                  >
+                    <span className="flex items-center gap-1.5 truncate">
+                      <GoogleG size={12} />
+                      {f.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setDriveFiles((p) => p.filter((d) => d.id !== f.id))}
+                      className="text-muted-foreground hover:text-foreground ml-2 shrink-0"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </li>
+                ))}
+              </motion.ul>
+            )}
+            <GoogleDrivePicker
+              open={drivePicker}
+              onOpenChange={setDrivePicker}
+              onConfirm={(picked) =>
+                setDriveFiles((prev) => {
+                  const ids = new Set(prev.map((p) => p.id));
+                  return [...prev, ...picked.filter((p) => !ids.has(p.id))];
+                })
+              }
+            />
           </div>
 
           {/* Submit */}
