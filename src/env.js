@@ -21,8 +21,10 @@ export const env = createEnv({
     // Which provider/model the chat route uses. Swap live during the hackathon.
     AI_PROVIDER: z.enum(["anthropic", "openai", "openrouter"]).default("anthropic"),
     AI_MODEL: z.string().default("claude-sonnet-4-6"),
-    // Optional stronger model just for training-content generation.
+    // Optional stronger model for structure-critical generation (outline, revision).
     AI_CONTENT_MODEL: z.string().optional(),
+    // Optional fast/cheap model for high-volume slot fills (theory/example/exercise).
+    AI_FAST_MODEL: z.string().optional(),
   },
 
   /**
@@ -45,6 +47,7 @@ export const env = createEnv({
     AI_PROVIDER: process.env.AI_PROVIDER,
     AI_MODEL: process.env.AI_MODEL,
     AI_CONTENT_MODEL: process.env.AI_CONTENT_MODEL,
+    AI_FAST_MODEL: process.env.AI_FAST_MODEL,
     NEXT_PUBLIC_MAPTILER_KEY: process.env.NEXT_PUBLIC_MAPTILER_KEY,
   },
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

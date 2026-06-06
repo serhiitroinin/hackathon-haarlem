@@ -52,6 +52,10 @@ model Deck {
     project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
     title     String
     slides    Json          // Slide[] from the builder
+    // "draft" = read-only review (comments + chat feedback) | "hifi" = editable.
+    stage     String        @default("draft")
+    // Chat feedback messages gathered during draft review (FeedbackMsg[]).
+    feedback  Json?
     versions  DeckVersion[]
     createdAt DateTime      @default(now())
     updatedAt DateTime      @updatedAt

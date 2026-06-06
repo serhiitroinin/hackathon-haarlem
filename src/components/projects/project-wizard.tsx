@@ -115,7 +115,7 @@ export function ProjectWizard({ collapsed }: { collapsed?: boolean }) {
           {!collapsed && "New project"}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
             {step === 1 ? "New project" : "Add starting material"}
@@ -128,7 +128,7 @@ export function ProjectWizard({ collapsed }: { collapsed?: boolean }) {
         </DialogHeader>
 
         {step === 1 ? (
-          <div className="space-y-4 py-2">
+          <div className="min-w-0 space-y-4 py-2">
             <div className="space-y-1.5">
               <Label htmlFor="project-title">Title</Label>
               <Input
@@ -154,7 +154,7 @@ export function ProjectWizard({ collapsed }: { collapsed?: boolean }) {
             </div>
           </div>
         ) : (
-          <div className="py-2">
+          <div className="min-w-0 py-2">
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
@@ -193,21 +193,21 @@ export function ProjectWizard({ collapsed }: { collapsed?: boolean }) {
               }}
             />
             {files.length > 0 && (
-              <ul className="mt-3 space-y-1.5">
+              <ul className="mt-3 max-h-40 space-y-1.5 overflow-y-auto pr-1">
                 {files.map((f, i) => (
                   <li
                     key={`${f.name}-${i}`}
-                    className="flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-sm"
+                    className="flex min-w-0 items-center gap-2 rounded-md border px-2.5 py-1.5 text-sm"
                   >
                     <FileText className="text-muted-foreground h-4 w-4 shrink-0" />
                     <span className="min-w-0 flex-1 truncate">{f.name}</span>
-                    <span className="text-muted-foreground text-xs">
+                    <span className="text-muted-foreground shrink-0 text-xs">
                       {formatBytes(f.size)}
                     </span>
                     <button
                       type="button"
                       onClick={() => setFiles((p) => p.filter((_, j) => j !== i))}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="text-muted-foreground hover:text-foreground shrink-0"
                       aria-label="Remove"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -233,19 +233,21 @@ export function ProjectWizard({ collapsed }: { collapsed?: boolean }) {
               <GoogleG size={15} /> Add from Google Drive
             </Button>
             {driveFiles.length > 0 && (
-              <ul className="mt-2 space-y-1.5">
+              <ul className="mt-2 max-h-44 space-y-1.5 overflow-y-auto pr-1">
                 {driveFiles.map((f) => (
                   <li
                     key={f.id}
-                    className="flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-sm"
+                    className="flex min-w-0 items-center gap-2 rounded-md border px-2.5 py-1.5 text-sm"
                   >
-                    <GoogleG size={14} />
+                    <span className="shrink-0">
+                      <GoogleG size={14} />
+                    </span>
                     <span className="min-w-0 flex-1 truncate">{f.name}</span>
-                    <span className="text-muted-foreground text-xs">Drive</span>
+                    <span className="text-muted-foreground shrink-0 text-xs">Drive</span>
                     <button
                       type="button"
                       onClick={() => setDriveFiles((p) => p.filter((d) => d.id !== f.id))}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="text-muted-foreground hover:text-foreground shrink-0"
                       aria-label="Remove"
                     >
                       <X className="h-3.5 w-3.5" />

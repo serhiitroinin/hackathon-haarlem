@@ -63,9 +63,33 @@ export type Slide = {
   overrides?: Record<string, ElementStyle>;
   /** Optional background colour key (light slides) — see BG_OPTIONS. */
   background?: string;
+  /** Inline review comments pinned on the slide (draft stage). */
+  comments?: SlideComment[];
 };
 
-export type Deck = { title: string; slides: Slide[] };
+/** An inline comment pinned to a position on a slide (x,y as 0..1 fractions). */
+export type SlideComment = {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+};
+
+/** A feedback chat message gathered during draft review. */
+export type FeedbackMsg = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+};
+
+export type DeckStage = "draft" | "hifi";
+
+export type Deck = {
+  title: string;
+  slides: Slide[];
+  stage?: DeckStage;
+  feedback?: FeedbackMsg[];
+};
 
 export const EMPTY_NOTES: SpeakerNotes = {
   aim: "",

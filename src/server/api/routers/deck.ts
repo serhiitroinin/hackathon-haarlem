@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { SAMPLE_DECK } from "~/components/builder/sample-deck";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { Prisma } from "~/server/db";
 
@@ -21,7 +20,8 @@ export const deckRouter = createTRPCRouter({
       }),
     ),
 
-  /** Return the project's deck, seeding one from the sample if none exists. */
+  /** Return the project's deck, creating an EMPTY one if none exists. Real slides
+   * are produced by /api/slides/generate (the training framework), not seeded. */
   getOrCreate: publicProcedure
     .input(z.object({ projectId: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -37,8 +37,8 @@ export const deckRouter = createTRPCRouter({
       return ctx.db.deck.create({
         data: {
           projectId: input.projectId,
-          title: project?.title ? `${project.title} — training` : SAMPLE_DECK.title,
-          slides: asJson(SAMPLE_DECK.slides),
+          title: project?.title ? `${project.title} — training` : "Untitled training",
+          slides: asJson([]),
         },
       });
     }),
@@ -49,6 +49,8 @@ export const deckRouter = createTRPCRouter({
         deckId: z.string(),
         title: z.string().optional(),
         slides: z.unknown(),
+        stage: z.enum(["draft", "hifi"]).optional(),
+        feedback: z.unknown().optional(),
       }),
     )
     .mutation(({ ctx, input }) =>
@@ -57,6 +59,10 @@ export const deckRouter = createTRPCRouter({
         data: {
           ...(input.title ? { title: input.title } : {}),
           slides: asJson(input.slides),
+          ...(input.stage ? { stage: input.stage } : {}),
+          ...(input.feedback !== undefined
+            ? { feedback: asJson(input.feedback) }
+            : {}),
         },
       }),
     ),

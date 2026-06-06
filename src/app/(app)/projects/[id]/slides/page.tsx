@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
 
 import { SlideBuilder } from "~/components/builder/slide-builder";
-import { type Slide } from "~/components/builder/types";
+import {
+  type DeckStage,
+  type FeedbackMsg,
+  type Slide,
+} from "~/components/builder/types";
 import { api } from "~/trpc/server";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +25,12 @@ export default async function ProjectSlidesPage({
   return (
     <SlideBuilder
       persistence={{ kind: "project", deckId: deck.id }}
-      initialDeck={{ title: deck.title, slides: deck.slides as unknown as Slide[] }}
+      initialDeck={{
+        title: deck.title,
+        slides: deck.slides as unknown as Slide[],
+        stage: (deck.stage as DeckStage) ?? "draft",
+        feedback: (deck.feedback as unknown as FeedbackMsg[]) ?? [],
+      }}
       backHref={`/projects/${id}`}
     />
   );

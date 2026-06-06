@@ -38,10 +38,18 @@ export function getModel(): LanguageModel {
 }
 
 /**
- * Model used for generating training content. Defaults to AI_CONTENT_MODEL if
- * set (use a stronger model here — structure quality is ~50% of the score),
- * otherwise falls back to the chat model.
+ * Strong model for structure-critical work (training outline, revision).
+ * Defaults to AI_CONTENT_MODEL, else the chat model.
  */
 export function getContentModel(): LanguageModel {
   return provider(env.AI_CONTENT_MODEL ?? env.AI_MODEL);
+}
+
+/**
+ * Fast/cheap model for high-volume slot fills (theory/example/exercise/wrap-up).
+ * Model tiering: spend quality on the outline, go fast+cheap on the bulk content.
+ * Defaults to AI_FAST_MODEL, else the chat model.
+ */
+export function getFastModel(): LanguageModel {
+  return provider(env.AI_FAST_MODEL ?? env.AI_MODEL);
 }

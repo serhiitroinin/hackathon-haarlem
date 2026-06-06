@@ -37,6 +37,8 @@ import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
 import { analyzeSlide, slideStatus, type Issue } from "./attention";
+import { DraftReview } from "./draft-review";
+import { GenerateTraining } from "./generate-training";
 import { SAMPLE_DECK } from "./sample-deck";
 import { SlideCanvas } from "./slide-canvas";
 import {
@@ -51,7 +53,9 @@ import {
   EMPTY_NOTES,
   type Deck,
   type ElementStyle,
+  type FeedbackMsg,
   type Slide,
+  type SlideComment,
   type SpeakerNotes,
 } from "./types";
 
@@ -111,6 +115,7 @@ export function SlideBuilder({
   const [hydrated, setHydrated] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [exporting, setExporting] = useState(false);
+  const [revising, setRevising] = useState(false);
   const [previewRef, previewWidth] = useWidth<HTMLDivElement>();
 
   const utils = api.useUtils();
@@ -149,7 +154,13 @@ export function SlideBuilder({
     setSaveState("saving");
     const t = setTimeout(() => {
       save.mutate(
-        { deckId, slides: deck.slides, title: deck.title },
+        {
+          deckId,
+          slides: deck.slides,
+          title: deck.title,
+          stage: deck.stage,
+          feedback: deck.feedback ?? [],
+        },
         { onSuccess: () => setSaveState("saved") },
       );
     }, 700);
@@ -204,6 +215,92 @@ export function SlideBuilder({
     } finally {
       setExporting(false);
     }
+  }
+
+  // ---- draft-review handlers ---------------------------------------------
+  function addComment(slideIndex: number, c: SlideComment) {
+    setDeck((d) => ({
+      ...d,
+      slides: d.slides.map((s, i) =>
+        i === slideIndex ? { ...s, comments: [...(s.comments ?? []), c] } : s,
+      ),
+    }));
+  }
+  function deleteComment(slideIndex: number, id: string) {
+    setDeck((d) => ({
+      ...d,
+      slides: d.slides.map((s, i) =>
+        i === slideIndex
+          ? { ...s, comments: (s.comments ?? []).filter((c) => c.id !== id) }
+          : s,
+      ),
+    }));
+  }
+  function addFeedback(text: string) {
+    const msg: FeedbackMsg = { id: `f-${Date.now()}`, role: "user", text };
+    setDeck((d) => ({ ...d, feedback: [...(d.feedback ?? []), msg] }));
+  }
+  function deleteFeedback(id: string) {
+    setDeck((d) => ({ ...d, feedback: (d.feedback ?? []).filter((m) => m.id !== id) }));
+  }
+  async function revise() {
+    if (!isProject) {
+      toast.error("Open a project deck to revise");
+      return;
+    }
+    setRevising(true);
+    try {
+      const res = await fetch("/api/slides/revise", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ deckId }),
+      });
+      if (!res.ok) throw new Error("Revision failed");
+      const data = (await res.json()) as { slides: Slide[]; title: string };
+      firstSave.current = true; // server already persisted; don't immediately re-save
+      setDeck((d) => ({ ...d, slides: data.slides, stage: "hifi", feedback: [] }));
+      setActive(0);
+      void utils.deck.versions.invalidate({ deckId });
+      toast.success("Hi-fi version ready — now fully editable");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Revision failed");
+    } finally {
+      setRevising(false);
+    }
+  }
+
+  // ---- EMPTY DECK: generate real slides from the training framework ------
+  if (isProject && deck.slides.length === 0) {
+    return (
+      <GenerateTraining
+        deckId={deckId}
+        defaultTopic={deck.title?.replace(/ — training$/, "")}
+        backHref={backHref}
+        onGenerated={({ title, slides }) => {
+          firstSave.current = true; // server already saved
+          setDeck((d) => ({ ...d, title, slides, stage: "draft", feedback: [] }));
+          setActive(0);
+        }}
+      />
+    );
+  }
+
+  // ---- DRAFT STAGE: read-only review surface -----------------------------
+  if (deck.stage === "draft") {
+    return (
+      <DraftReview
+        deck={deck}
+        active={active}
+        onActive={setActive}
+        onAddComment={addComment}
+        onDeleteComment={deleteComment}
+        onAddFeedback={addFeedback}
+        onDeleteFeedback={deleteFeedback}
+        onRevise={revise}
+        revising={revising}
+        backHref={backHref}
+      />
+    );
   }
 
   const slide = deck.slides[active];
