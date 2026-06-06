@@ -111,7 +111,7 @@ export function IntakeForm({ onComplete }: IntakeFormProps) {
         className="w-full max-w-xl"
       >        
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-7">
           {INTAKE_STEPS.map((step) => {
             const Icon = step.icon;
             const value = fields[step.id];
@@ -120,7 +120,7 @@ export function IntakeForm({ onComplete }: IntakeFormProps) {
             const isLevel = step.id === "level";
 
             return (
-              <div key={step.id} className="flex flex-col gap-1.5">
+              <div key={step.id} className="flex flex-col gap-2">
                 <label className="flex items-center gap-1.5 text-sm font-medium">
                   <Icon className="text-primary/70 h-3.5 w-3.5" />
                   {step.label}
@@ -164,7 +164,7 @@ export function IntakeForm({ onComplete }: IntakeFormProps) {
           })}
 
           {/* File upload */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <label className="flex items-center gap-1.5 text-sm font-medium">
               <Paperclip className="text-primary/70 h-3.5 w-3.5" />
               Reference documents
