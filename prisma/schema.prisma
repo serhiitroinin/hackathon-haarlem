@@ -50,8 +50,10 @@ model Project {
 //  - chars: length of `text`, denormalized for quick UI display
 model Source {
     id        String   @id @default(cuid())
-    projectId String
-    project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+    // Optional so `db push` can add it to pre-existing rows without a reset.
+    // The app always sets it on upload; any null rows are pre-project orphans.
+    projectId String?
+    project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
     name      String
     kind      String
     mimeType  String
