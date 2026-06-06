@@ -3,7 +3,7 @@ import { type SlideKind } from "~/components/builder/types";
 import { type Block, type Intake } from "./schema";
 
 /**
- * The Maverx training framework — the DIDACTIC ENGINE (docs/training-framework.md).
+ * The Maverx training framework — the DIDACTIC ENGINE.
  *
  *   TRAINING = Kick-off + [ Module₁ … Moduleₙ ] + Wrap-up
  *   MODULE   = Theory(1–3) + Example(1) + Exercise(1)
