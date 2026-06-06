@@ -1,6 +1,12 @@
 "use client";
 
-import { FolderOpen, GraduationCap, Layers, Sparkles, Trash2 } from "lucide-react";
+import {
+  FolderOpen,
+  Layers,
+  Presentation,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
@@ -103,9 +109,9 @@ export function ProjectSidebar() {
 
       {/* Footer */}
       <div className="flex items-center justify-between border-t px-3 py-3">
-        <Link href="/maverx">
+        <Link href="/builder">
           <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
-            <GraduationCap className="h-3.5 w-3.5" /> Training Builder
+            <Presentation className="h-3.5 w-3.5" /> Slide Builder
           </Button>
         </Link>
         <ThemeToggle />
