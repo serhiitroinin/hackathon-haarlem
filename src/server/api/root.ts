@@ -1,4 +1,5 @@
 import { deckRouter } from "~/server/api/routers/deck";
+import { driveRouter } from "~/server/api/routers/drive";
 import { noteRouter } from "~/server/api/routers/note";
 import { projectRouter } from "~/server/api/routers/project";
 import { sourceRouter } from "~/server/api/routers/source";
@@ -11,6 +12,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  */
 export const appRouter = createTRPCRouter({
   deck: deckRouter,
+  drive: driveRouter,
   note: noteRouter,
   project: projectRouter,
   source: sourceRouter,
