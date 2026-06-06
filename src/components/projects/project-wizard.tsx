@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { GoogleDrivePicker, GoogleG } from "~/components/google/google-drive-picker";
-import { type DriveFileMeta } from "~/lib/google/fake-drive";
+import { GoogleDriveButton, GoogleG } from "~/components/google/google-drive-picker";
+import { type DriveFileContent } from "~/lib/google/fake-drive";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -46,8 +46,7 @@ export function ProjectWizard({ collapsed }: { collapsed?: boolean }) {
   const [title, setTitle] = useState("");
   const [context, setContext] = useState("");
   const [files, setFiles] = useState<File[]>([]);
-  const [driveFiles, setDriveFiles] = useState<DriveFileMeta[]>([]);
-  const [drivePicker, setDrivePicker] = useState(false);
+  const [driveFiles, setDriveFiles] = useState<DriveFileContent[]>([]);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -143,7 +142,21 @@ export function ProjectWizard({ collapsed }: { collapsed?: boolean }) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="project-context">Initial context</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="project-context">Initial context</Label>
+                {/* Inline use of file CONTENT: pull a doc's text straight into this field. */}
+                <GoogleDriveButton
+                  variant="ghost"
+                  size="sm"
+                  label="Insert from Drive"
+                  className="h-7 px-2 text-[11px]"
+                  onImport={(files) =>
+                    setContext((c) =>
+                      [c.trim(), ...files.map((f) => f.text)].filter(Boolean).join("\n\n"),
+                    )
+                  }
+                />
+              </div>
               <Textarea
                 id="project-context"
                 placeholder="Who is the organization, what's the case, what are we trying to achieve…"
@@ -223,15 +236,16 @@ export function ProjectWizard({ collapsed }: { collapsed?: boolean }) {
               <span className="text-muted-foreground text-[10px] uppercase">or</span>
               <div className="bg-border h-px flex-1" />
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-2 w-full justify-center gap-2"
-              onClick={() => setDrivePicker(true)}
-            >
-              <GoogleG size={15} /> Add from Google Drive
-            </Button>
+            <GoogleDriveButton
+              full
+              className="mt-2"
+              onImport={(picked) =>
+                setDriveFiles((prev) => {
+                  const ids = new Set(prev.map((p) => p.id));
+                  return [...prev, ...picked.filter((p) => !ids.has(p.id))];
+                })
+              }
+            />
             {driveFiles.length > 0 && (
               <ul className="mt-2 space-y-1.5">
                 {driveFiles.map((f) => (
@@ -254,16 +268,6 @@ export function ProjectWizard({ collapsed }: { collapsed?: boolean }) {
                 ))}
               </ul>
             )}
-            <GoogleDrivePicker
-              open={drivePicker}
-              onOpenChange={setDrivePicker}
-              onConfirm={(picked) =>
-                setDriveFiles((prev) => {
-                  const ids = new Set(prev.map((p) => p.id));
-                  return [...prev, ...picked.filter((p) => !ids.has(p.id))];
-                })
-              }
-            />
           </div>
         )}
 

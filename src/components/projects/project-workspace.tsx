@@ -14,7 +14,7 @@ import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Chat } from "~/components/chat/chat";
-import { GoogleDrivePicker, GoogleG } from "~/components/google/google-drive-picker";
+import { GoogleDriveButton } from "~/components/google/google-drive-picker";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -46,8 +46,6 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
 
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [drivePicker, setDrivePicker] = useState(false);
-
   const driveImport = api.drive.importToProject.useMutation({
     onSuccess: async (res) => {
       await Promise.all([
@@ -206,24 +204,15 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
               <span className="text-muted-foreground text-[10px] uppercase">or</span>
               <div className="bg-border h-px flex-1" />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2 w-full justify-center gap-2"
-              onClick={() => setDrivePicker(true)}
+            <GoogleDriveButton
+              full
+              className="mt-2"
               disabled={driveImport.isPending}
-            >
-              <GoogleG size={15} /> Add from Google Drive
-            </Button>
+              onImport={(files) =>
+                driveImport.mutate({ projectId, fileIds: files.map((f) => f.id) })
+              }
+            />
           </div>
-
-          <GoogleDrivePicker
-            open={drivePicker}
-            onOpenChange={setDrivePicker}
-            onConfirm={(files) =>
-              driveImport.mutate({ projectId, fileIds: files.map((f) => f.id) })
-            }
-          />
 
           <ScrollArea className="min-h-0 flex-1 px-4 pb-4">
             {project.data?.context && (
