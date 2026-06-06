@@ -43,7 +43,7 @@ export function WorkspaceHeader({ step }: WorkspaceHeaderProps) {
 
   return (
     <div className="border-b bg-card">
-      <div className="flex h-14 items-center px-6">
+      <div className="flex h-14 items-center px-3 sm:px-6">
         {/* Left: company logo */}
         <div className="flex flex-1 items-center">
           <Image
@@ -51,20 +51,20 @@ export function WorkspaceHeader({ step }: WorkspaceHeaderProps) {
             alt="Maverx"
             width={200}
             height={100}
-            className="h-36 w-auto object-contain"
+            className="h-9 w-auto object-contain"
           />
         </div>
 
         {/* Center: steps */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           {STEPS.map((s, i) => {
             const done = step > s.number;
             const active = step === s.number;
             return (
-              <div key={s.number} className="flex items-center gap-2">
+              <div key={s.number} className="flex items-center gap-1 sm:gap-2">
                 <div
                   className={cn(
-                    "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium",
+                    "flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium sm:px-3",
                     active
                       ? "bg-primary/10 text-primary"
                       : done
@@ -84,13 +84,13 @@ export function WorkspaceHeader({ step }: WorkspaceHeaderProps) {
                       {s.number}
                     </span>
                   )}
-                  {s.label}
+                  <span className="hidden sm:inline">{s.label}</span>
                 </div>
 
                 {i < STEPS.length - 1 && (
                   <div
                     className={cn(
-                      "h-px w-8 rounded-full transition-colors",
+                      "h-px w-4 rounded-full transition-colors sm:w-8",
                       step > s.number ? "bg-emerald-400" : "bg-border",
                     )}
                   />

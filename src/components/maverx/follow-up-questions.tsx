@@ -51,7 +51,7 @@ export function FollowUpQuestions({ intakeData, onComplete }: FollowUpQuestionsP
   }
 
   return (
-    <div className="flex flex-1 items-start justify-center overflow-y-auto px-6 py-10">
+    <div className="flex flex-1 items-start justify-center overflow-y-auto px-4 py-6 sm:px-6 sm:py-10">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
