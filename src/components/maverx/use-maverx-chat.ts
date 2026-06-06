@@ -3,47 +3,9 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import type { UIMessage } from "ai";
-import { useMemo, useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState } from "react";
 
-import type { IntakeStepId, StepStatus, ToolPart } from "~/components/maverx/types";
-import { INTAKE_STEPS } from "~/components/maverx/constants";
-
-function detectIntakeProgress(
-  messages: { role: string; parts: { type: string; text?: string }[] }[],
-  isGenerating: boolean,
-): Record<IntakeStepId, StepStatus> {
-  const allText = messages
-    .filter((m) => m.role === "assistant")
-    .flatMap((m) => m.parts.filter((p) => p.type === "text").map((p) => p.text ?? ""))
-    .join(" ");
-
-  const userText = messages
-    .filter((m) => m.role === "user")
-    .flatMap((m) => m.parts.filter((p) => p.type === "text").map((p) => p.text ?? ""))
-    .join(" ");
-
-  const combined = allText + " " + userText;
-
-  const result = {} as Record<IntakeStepId, StepStatus>;
-  for (const step of INTAKE_STEPS) {
-    const hit = step.patterns.some((p) => p.test(combined));
-    if (isGenerating) {
-      result[step.id] = "confirmed";
-    } else if (hit) {
-      const recentAssistant = messages
-        .filter((m) => m.role === "assistant")
-        .slice(-2)
-        .flatMap((m) => m.parts.filter((p) => p.type === "text").map((p) => p.text ?? ""))
-        .join(" ");
-      result[step.id] = step.patterns.some((p) => p.test(recentAssistant))
-        ? "confirmed"
-        : "discussed";
-    } else {
-      result[step.id] = "pending";
-    }
-  }
-  return result;
-}
+import type { IntakeFormData } from "~/components/maverx/types";
 
 export interface MaverxChatState {
   messages: UIMessage[];
@@ -51,16 +13,16 @@ export interface MaverxChatState {
   setInput: React.Dispatch<React.SetStateAction<string>>;
   bottomRef: React.RefObject<HTMLDivElement | null>;
   busy: boolean;
-  isGenerating: boolean;
-  intakeStatuses: Record<IntakeStepId, StepStatus>;
   handleSubmit: (e: React.FormEvent) => void;
   handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   stop: () => void;
 }
 
-export function useMaverxChat(): MaverxChatState {
+export function useMaverxChat(intakeData: IntakeFormData): MaverxChatState {
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const hasSentInitialRef = useRef(false);
+  const intakeDataRef = useRef(intakeData);
 
   const { messages, sendMessage, status, stop } = useChat({
     transport: new DefaultChatTransport({ api: "/api/maverx-chat" }),
@@ -68,21 +30,29 @@ export function useMaverxChat(): MaverxChatState {
 
   const busy = status === "submitted" || status === "streaming";
 
-  const isGenerating = messages.some((m) =>
-    m.parts.some(
-      (p) =>
-        p.type.startsWith("tool-") &&
-        p.type.replace(/^tool-/, "") === "generateTraining" &&
-        (p as ToolPart).state !== "output-available" &&
-        (p as ToolPart).state !== "output-error",
-    ),
-  );
+  // Auto-send initial context message once on mount
+  useEffect(() => {
+    if (hasSentInitialRef.current) return;
+    hasSentInitialRef.current = true;
 
-  const intakeStatuses = useMemo(
-    () => detectIntakeProgress(messages as Parameters<typeof detectIntakeProgress>[0], isGenerating),
-    [messages, isGenerating],
-  );
+    const { topic, audience, level, duration, objective, files } = intakeDataRef.current;
+    const fileContext =
+      files.length > 0 ? `\nReference documents: ${files.map((f) => f.name).join(", ")}` : "";
 
+    const text =
+      `Please create a training with the following details:\n` +
+      `- Topic: ${topic}\n` +
+      `- Audience: ${audience}\n` +
+      `- Knowledge level: ${level}\n` +
+      `- Duration: ${duration}\n` +
+      `- Learning objective: ${objective}` +
+      fileContext;
+
+    void sendMessage({ text });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -108,8 +78,6 @@ export function useMaverxChat(): MaverxChatState {
     setInput,
     bottomRef,
     busy,
-    isGenerating,
-    intakeStatuses,
     handleSubmit,
     handleKeyDown,
     stop,

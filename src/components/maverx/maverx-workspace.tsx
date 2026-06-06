@@ -1,43 +1,35 @@
 "use client";
 
-import { useMaverxChat } from "~/components/maverx/use-maverx-chat";
+import { useState } from "react";
+
+import type { IntakeFormData } from "~/components/maverx/types";
 import { WorkspaceHeader } from "~/components/maverx/workspace-header";
-import { WorkspaceSidebar } from "~/components/maverx/workspace-sidebar";
-import { ChatMessages } from "~/components/maverx/chat-messages";
-import { ChatInput } from "~/components/maverx/chat-input";
+import { IntakeForm } from "~/components/maverx/intake-form";
+import { ChatPanel } from "~/components/maverx/chat-panel";
 
 export function MaverxWorkspace() {
-  const {
-    messages,
-    input,
-    setInput,
-    bottomRef,
-    busy,
-    isGenerating,
-    intakeStatuses,
-    handleSubmit,
-    handleKeyDown,
-    stop,
-  } = useMaverxChat();
+  const [activeTab, setActiveTab] = useState<"intake" | "chat">("intake");
+  const [intakeData, setIntakeData] = useState<IntakeFormData | null>(null);
+
+  function handleIntakeComplete(data: IntakeFormData) {
+    setIntakeData(data);
+    setActiveTab("chat");
+  }
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <WorkspaceHeader />
+      <WorkspaceHeader
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        chatEnabled={intakeData !== null}
+      />
 
-      <div className="flex min-h-0 flex-1">
-        <WorkspaceSidebar statuses={intakeStatuses} isGenerating={isGenerating} />
-
-        <main className="flex min-w-0 flex-1 flex-col">
-          <ChatMessages messages={messages} bottomRef={bottomRef} />
-          <ChatInput
-            input={input}
-            setInput={setInput}
-            busy={busy}
-            stop={stop}
-            handleSubmit={handleSubmit}
-            handleKeyDown={handleKeyDown}
-          />
-        </main>
+      <div className="flex min-h-0 flex-1 flex-col">
+        {activeTab === "intake" || intakeData === null ? (
+          <IntakeForm onComplete={handleIntakeComplete} />
+        ) : (
+          <ChatPanel intakeData={intakeData} />
+        )}
       </div>
     </div>
   );

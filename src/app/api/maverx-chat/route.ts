@@ -26,6 +26,8 @@ Ask for these FIVE required inputs (a few at a time is fine, keep it conversatio
 5. Primary learning objective
 
 Rules:
+- If the user's first message already contains all five required fields, confirm them
+  in one brief recap list and immediately call generateTraining — do not re-ask.
 - If an answer is vague or missing, ask a focused follow-up. NEVER guess silently.
 - Do NOT call the generateTraining tool until you clearly have all five.
 - When intake is complete, briefly read the five values back in one short list, then
