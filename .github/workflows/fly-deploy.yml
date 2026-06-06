@@ -1,0 +1,37 @@
+# Deploy to Fly.io on every push to main.
+#
+# The whole app is built inside ./Dockerfile on Fly's remote builders
+# (--remote-only), so this runner only needs flyctl — no Node/pnpm/Prisma.
+# `flyctl deploy` also runs the fly.toml release_command (`pnpm db:push`),
+# so the Postgres schema is synced automatically as part of each release.
+#
+# Requires one repo secret: FLY_API_TOKEN
+#   fly tokens create deploy -a hackathon-haarlem
+#   gh secret set FLY_API_TOKEN --body "<token>"
+name: Deploy to Fly.io
+
+on:
+  push:
+    branches: [main]
+  # Allow manual redeploys from the Actions tab.
+  workflow_dispatch:
+
+# Cancel an in-flight deploy if a newer commit lands on main.
+concurrency:
+  group: fly-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy app
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
