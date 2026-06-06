@@ -17,8 +17,9 @@ primary_region = "ams"
 [env]
   # Non-secret config. Swap the model live with `fly secrets set` or by editing
   # here + redeploying. The API key itself is a secret (see DEPLOY.md), not here.
-  AI_PROVIDER = "anthropic"
-  AI_MODEL = "claude-sonnet-4-6"
+  # Using OpenRouter (Maverx team credits); set OPENROUTER_API_KEY as a secret.
+  AI_PROVIDER = "openrouter"
+  AI_MODEL = "anthropic/claude-sonnet-4.6"
 
 [http_service]
   internal_port = 3000

@@ -8,6 +8,10 @@ import {
   NotesSummaryCard,
   type NotesSummaryOutput,
 } from "~/components/chat/generative/notes-summary-card";
+import {
+  TrainingReadyCard,
+  type TrainingReadyOutput,
+} from "~/components/chat/generative/training-ready-card";
 
 /**
  * Generative-UI registry: maps a tool name to the component that renders its
@@ -18,6 +22,9 @@ const renderers: Record<string, (output: unknown) => React.ReactNode> = {
   createNote: (output) => <NoteCreatedCard {...(output as NoteCreatedOutput)} />,
   summarizeNotes: (output) => (
     <NotesSummaryCard {...(output as NotesSummaryOutput)} />
+  ),
+  generateTraining: (output) => (
+    <TrainingReadyCard {...(output as TrainingReadyOutput)} />
   ),
 };
 

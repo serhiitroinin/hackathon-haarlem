@@ -16,9 +16,13 @@ export const env = createEnv({
     // The AI SDK providers read these from process.env automatically.
     ANTHROPIC_API_KEY: z.string().optional(),
     OPENAI_API_KEY: z.string().optional(),
+    // OpenRouter (OpenAI-compatible) — Maverx provides €20 of credits per team.
+    OPENROUTER_API_KEY: z.string().optional(),
     // Which provider/model the chat route uses. Swap live during the hackathon.
-    AI_PROVIDER: z.enum(["anthropic", "openai"]).default("anthropic"),
+    AI_PROVIDER: z.enum(["anthropic", "openai", "openrouter"]).default("anthropic"),
     AI_MODEL: z.string().default("claude-sonnet-4-6"),
+    // Optional stronger model just for training-content generation.
+    AI_CONTENT_MODEL: z.string().optional(),
   },
 
   /**
@@ -37,8 +41,10 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     AI_PROVIDER: process.env.AI_PROVIDER,
     AI_MODEL: process.env.AI_MODEL,
+    AI_CONTENT_MODEL: process.env.AI_CONTENT_MODEL,
     NEXT_PUBLIC_MAPTILER_KEY: process.env.NEXT_PUBLIC_MAPTILER_KEY,
   },
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

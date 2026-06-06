@@ -65,10 +65,24 @@ function ToolPartView({ part }: { part: ToolPart }) {
   return <ToolChip part={part} />;
 }
 
-export function Chat({ onResult }: { onResult?: () => void }) {
+export function Chat({
+  onResult,
+  api = "/api/chat",
+  placeholder = "Message the assistant…",
+  emptyState,
+  className,
+}: {
+  onResult?: () => void;
+  /** Chat endpoint to talk to (defaults to the notes demo route). */
+  api?: string;
+  placeholder?: string;
+  /** Replaces the default starter hint shown before the first message. */
+  emptyState?: React.ReactNode;
+  className?: string;
+}) {
   const [input, setInput] = useState("");
   const { messages, sendMessage, status, stop } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    transport: new DefaultChatTransport({ api }),
     // Fires when the assistant turn finishes — refresh anything tools touched.
     onFinish: () => onResult?.(),
   });
@@ -84,17 +98,20 @@ export function Chat({ onResult }: { onResult?: () => void }) {
   }
 
   return (
-    <div className="flex h-[28rem] flex-col">
+    <div className={cn("flex h-[28rem] flex-col", className)}>
       <ScrollArea className="flex-1 pr-3">
         <div className="flex flex-col gap-3 py-2">
-          {messages.length === 0 && (
-            <p className="text-muted-foreground py-8 text-center text-sm">
-              Try{" "}
-              <em>&ldquo;save a note pinned to the Grote Markt in Haarlem&rdquo;</em>{" "}
-              then <em>&ldquo;give me a summary of my notes&rdquo;</em> — the agent
-              calls tools and renders animated UI instead of text.
-            </p>
-          )}
+          {messages.length === 0 &&
+            (emptyState ?? (
+              <p className="text-muted-foreground py-8 text-center text-sm">
+                Try{" "}
+                <em>
+                  &ldquo;save a note pinned to the Grote Markt in Haarlem&rdquo;
+                </em>{" "}
+                then <em>&ldquo;give me a summary of my notes&rdquo;</em> — the agent
+                calls tools and renders animated UI instead of text.
+              </p>
+            ))}
           <AnimatePresence initial={false}>
             {messages.map((m) => (
               <motion.div
@@ -139,7 +156,7 @@ export function Chat({ onResult }: { onResult?: () => void }) {
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Message the assistant…"
+          placeholder={placeholder}
           autoFocus
         />
         {busy ? (

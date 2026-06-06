@@ -28,3 +28,21 @@ model Note {
 
     @@index([createdAt])
 }
+
+// A source document uploaded on the first screen. Its extracted `text` becomes
+// context for the next steps (the Maverx training generation reads these in).
+//  - kind: "pdf" | "image" | "text"
+//  - text: extracted/plain text (empty for images we only kept for vision)
+//  - chars: length of `text`, denormalized for quick UI display
+model Source {
+    id        String   @id @default(cuid())
+    name      String
+    kind      String
+    mimeType  String
+    bytes     Int
+    text      String   @default("")
+    chars     Int      @default(0)
+    createdAt DateTime @default(now())
+
+    @@index([createdAt])
+}
