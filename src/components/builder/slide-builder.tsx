@@ -272,32 +272,32 @@ export function SlideBuilder({
   return (
     <div className="flex h-screen flex-col">
       {/* Top bar */}
-      <header className="flex items-center justify-between border-b px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <Presentation className="text-primary h-5 w-5" />
+      <header className="flex items-center justify-between gap-2 border-b px-4 py-2.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <Presentation className="text-primary h-5 w-5 shrink-0" />
           <input
             value={deck.title}
             onChange={(e) => setDeck((d) => ({ ...d, title: e.target.value }))}
-            className="bg-transparent text-sm font-semibold tracking-tight outline-none"
+            className="bg-transparent text-sm font-semibold tracking-tight outline-none min-w-0 max-w-[120px] sm:max-w-none"
           />
-          <Badge variant="secondary" className="ml-1 text-[10px]">
+          <Badge variant="secondary" className="ml-1 hidden text-[10px] sm:inline-flex">
             Maverx style
           </Badge>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {attentionCount > 0 ? (
-            <span className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-500">
+            <span className="hidden items-center gap-1.5 text-xs text-amber-600 sm:flex dark:text-amber-500">
               <AlertTriangle className="h-3.5 w-3.5" />
               {attentionCount} need attention
             </span>
           ) : (
-            <span className="flex items-center gap-1.5 text-xs text-emerald-600">
+            <span className="hidden items-center gap-1.5 text-xs text-emerald-600 sm:flex">
               <Check className="h-3.5 w-3.5" /> All on-brand
             </span>
           )}
 
           {isProject && (
-            <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+            <span className="text-muted-foreground hidden items-center gap-1 text-[11px] sm:flex">
               {saveState === "saving" ? (
                 <>
                   <Loader2 className="h-3 w-3 animate-spin" /> Saving…
@@ -312,12 +312,12 @@ export function SlideBuilder({
 
           {isProject && (
             <>
-              <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={saveVersion}>
+              <Button variant="ghost" size="sm" className="hidden gap-1.5 text-xs sm:inline-flex" onClick={saveVersion}>
                 <Save className="h-3.5 w-3.5" /> Save version
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
+                  <Button variant="ghost" size="sm" className="hidden gap-1.5 text-xs sm:inline-flex">
                     <History className="h-3.5 w-3.5" /> History
                     {versions.data && versions.data.length > 0 && (
                       <span className="text-muted-foreground">({versions.data.length})</span>
@@ -350,14 +350,14 @@ export function SlideBuilder({
 
           <Button size="sm" className="gap-1.5 text-xs" onClick={exportPptx} disabled={exporting}>
             {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-            Export .pptx
+            <span className="hidden sm:inline">Export .pptx</span>
           </Button>
 
           {!isProject && (
             <Button
               variant="ghost"
               size="sm"
-              className="gap-1.5 text-xs"
+              className="hidden gap-1.5 text-xs sm:inline-flex"
               onClick={() => {
                 setDeck(SAMPLE_DECK);
                 setActive(0);
@@ -376,9 +376,32 @@ export function SlideBuilder({
         </div>
       </header>
 
+      {/* Mobile slide navigation */}
+      <div className="flex items-center justify-between border-b px-4 py-2 md:hidden">
+        <button
+          type="button"
+          onClick={() => { setActive((a) => Math.max(0, a - 1)); setSelected(null); }}
+          disabled={active === 0}
+          className="rounded px-2 py-1 text-sm disabled:opacity-40 hover:bg-muted"
+        >
+          ← Prev
+        </button>
+        <span className="text-muted-foreground text-xs">
+          Slide {active + 1} of {deck.slides.length}
+        </span>
+        <button
+          type="button"
+          onClick={() => { setActive((a) => Math.min(deck.slides.length - 1, a + 1)); setSelected(null); }}
+          disabled={active === deck.slides.length - 1}
+          className="rounded px-2 py-1 text-sm disabled:opacity-40 hover:bg-muted"
+        >
+          Next →
+        </button>
+      </div>
+
       <div className="flex min-h-0 flex-1">
         {/* Thumbnail rail */}
-        <div className="bg-muted/30 flex w-56 shrink-0 flex-col border-r">
+        <div className="bg-muted/30 hidden w-56 shrink-0 flex-col border-r md:flex">
           <button
             onClick={() => setOnlyFlagged((v) => !v)}
             className={cn(
@@ -428,7 +451,7 @@ export function SlideBuilder({
         </div>
 
         {/* Preview (inline editable) */}
-        <div className="flex min-w-0 flex-1 flex-col items-center overflow-auto p-6">
+        <div className="flex min-w-0 flex-1 flex-col items-center overflow-auto p-3 sm:p-6">
           <div ref={previewRef} className="w-full max-w-4xl">
             {slide && (
               <SlideCanvas
@@ -477,7 +500,7 @@ export function SlideBuilder({
         </div>
 
         {/* Dynamic inspector */}
-        <ScrollArea className="w-80 shrink-0 border-l">
+        <ScrollArea className="hidden w-80 shrink-0 border-l md:block">
           {slide && (
             <div className="space-y-4 p-4">
               {/* Element inspector (shown when something is selected) */}

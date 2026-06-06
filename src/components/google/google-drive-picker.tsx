@@ -4,13 +4,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { Check, Clock, HardDrive, Search, Star, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent } from "~/components/ui/dialog";
-import {
-  type DriveFileContent,
-  type DriveFileMeta,
-  type DriveKind,
-} from "~/lib/google/fake-drive";
+import { type DriveFileMeta, type DriveKind } from "~/lib/google/fake-drive";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
 
@@ -120,17 +115,14 @@ export function GoogleDrivePicker({
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  /** Receives the picked files WITH their content (text) to use in place. */
-  onConfirm: (files: DriveFileContent[]) => void;
+  onConfirm: (files: DriveFileMeta[]) => void;
 }) {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const [tab, setTab] = useState<Tab>("recent");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const utils = api.useUtils();
   const files = api.drive.list.useQuery(undefined, { enabled: open });
 
   useEffect(() => {
@@ -170,20 +162,11 @@ export function GoogleDrivePicker({
     });
   }
 
-  async function importIds(ids: string[]) {
-    if (ids.length === 0) return;
-    setConfirming(true);
-    try {
-      // Resolve the picked files to their content so the caller can use it in place.
-      const content = await utils.drive.content.fetch({ fileIds: ids });
-      onConfirm(content);
-      onOpenChange(false);
-    } finally {
-      setConfirming(false);
-    }
+  function confirm() {
+    const picked = (files.data ?? []).filter((f) => selected.has(f.id));
+    onConfirm(picked);
+    onOpenChange(false);
   }
-  const confirm = () => importIds([...selected]);
-  const confirmOne = (id: string) => importIds([id]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -320,7 +303,10 @@ export function GoogleDrivePicker({
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: Math.min(i * 0.03, 0.25) }}
                           onClick={() => toggle(f.id)}
-                          onDoubleClick={() => confirmOne(f.id)}
+                          onDoubleClick={() => {
+                            toggle(f.id);
+                            setTimeout(confirm, 0);
+                          }}
                           className={cn(
                             "group relative flex flex-col items-start rounded-lg border bg-white p-3 text-left transition dark:bg-zinc-900",
                             isSel
@@ -355,29 +341,11 @@ export function GoogleDrivePicker({
 
               {/* Footer */}
               <div className="flex items-center justify-between border-t px-5 py-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-muted-foreground text-xs">
-                    {selected.size > 0
-                      ? `${selected.size} selected`
-                      : "Select files to import"}
-                  </span>
-                  {list.length > 0 && (
-                    <button
-                      onClick={() => {
-                        const allShown = list.every((f) => selected.has(f.id));
-                        setSelected((s) => {
-                          const next = new Set(s);
-                          for (const f of list)
-                            allShown ? next.delete(f.id) : next.add(f.id);
-                          return next;
-                        });
-                      }}
-                      className="text-[11px] font-medium text-[#1a73e8] hover:underline"
-                    >
-                      {list.every((f) => selected.has(f.id)) ? "Clear all" : "Select all"}
-                    </button>
-                  )}
-                </div>
+                <span className="text-muted-foreground text-xs">
+                  {selected.size > 0
+                    ? `${selected.size} selected`
+                    : "Select files to import"}
+                </span>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => onOpenChange(false)}
@@ -387,18 +355,11 @@ export function GoogleDrivePicker({
                   </button>
                   <button
                     onClick={confirm}
-                    disabled={selected.size === 0 || confirming}
-                    className="flex items-center gap-2 rounded-md px-5 py-2 text-sm font-medium text-white shadow-sm transition disabled:opacity-40"
+                    disabled={selected.size === 0}
+                    className="rounded-md px-5 py-2 text-sm font-medium text-white shadow-sm transition disabled:opacity-40"
                     style={{ background: GBLUE }}
                   >
-                    {confirming && (
-                      <motion.span
-                        className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent"
-                        animate={{ rotate: 360 }}
-                        transition={{ repeat: Infinity, duration: 0.7, ease: "linear" }}
-                      />
-                    )}
-                    {confirming ? "Importing…" : "Select"}
+                    Select
                   </button>
                 </div>
               </div>
@@ -407,49 +368,5 @@ export function GoogleDrivePicker({
         </AnimatePresence>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/* ---- drop-in trigger ----------------------------------------------------- */
-
-/**
- * Generic "Add from Google Drive" button + picker, ready to drop in anywhere.
- * Manages its own open state; hand it an `onImport(files)` and style props.
- *
- *   <GoogleDriveButton onImport={(files) => importMutation.mutate(...)} full />
- */
-export function GoogleDriveButton({
-  onImport,
-  label = "Add from Google Drive",
-  variant = "outline",
-  size = "sm",
-  full = false,
-  disabled = false,
-  className,
-}: {
-  onImport: (files: DriveFileContent[]) => void;
-  label?: string;
-  variant?: React.ComponentProps<typeof Button>["variant"];
-  size?: React.ComponentProps<typeof Button>["size"];
-  /** Full-width button. */
-  full?: boolean;
-  disabled?: boolean;
-  className?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <Button
-        type="button"
-        variant={variant}
-        size={size}
-        disabled={disabled}
-        className={cn("gap-2", full && "w-full justify-center", className)}
-        onClick={() => setOpen(true)}
-      >
-        <GoogleG size={15} /> {label}
-      </Button>
-      <GoogleDrivePicker open={open} onOpenChange={setOpen} onConfirm={onImport} />
-    </>
   );
 }

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { driveMeta, getDriveContent, getDriveFiles } from "~/lib/google/fake-drive";
+import { driveMeta, FAKE_DRIVE } from "~/lib/google/fake-drive";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 
 /**
@@ -10,11 +10,6 @@ import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
  */
 export const driveRouter = createTRPCRouter({
   list: publicProcedure.query(() => driveMeta()),
-
-  /** Resolve picked file ids to their content (text), for use anywhere. */
-  content: publicProcedure
-    .input(z.object({ fileIds: z.array(z.string()) }))
-    .query(({ input }) => getDriveContent(input.fileIds)),
 
   importToProject: publicProcedure
     .input(
@@ -30,7 +25,7 @@ export const driveRouter = createTRPCRouter({
       });
       if (!project) throw new Error("Project not found");
 
-      const files = getDriveFiles(input.fileIds);
+      const files = FAKE_DRIVE.filter((f) => input.fileIds.includes(f.id));
       let created = 0;
       for (const f of files) {
         await ctx.db.source.create({

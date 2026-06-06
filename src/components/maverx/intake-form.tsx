@@ -1,13 +1,22 @@
 "use client";
 
-import { GraduationCap, Paperclip, Upload, X } from "lucide-react";
+import { Paperclip, Upload, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useRef, useState } from "react";
 
 import type { IntakeFormData, IntakeStepId } from "~/components/maverx/types";
 import { INTAKE_STEPS } from "~/components/maverx/constants";
+import { GoogleDrivePicker, GoogleG } from "~/components/google/google-drive-picker";
+import type { DriveFileMeta } from "~/lib/google/fake-drive";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
 
@@ -25,13 +34,23 @@ const INITIAL_FIELDS: FieldValues = {
   objective: "",
 };
 
+const LEVEL_OPTIONS = [
+  { value: "beginner", label: "Beginner" },
+  { value: "intermediate", label: "Intermediate" },
+  { value: "advanced", label: "Advanced" },
+];
+
+const REQUIRED_FIELDS: IntakeStepId[] = ["topic", "audience", "level"];
+
 export function IntakeForm({ onComplete }: IntakeFormProps) {
   const [fields, setFields] = useState<FieldValues>(INITIAL_FIELDS);
   const [files, setFiles] = useState<File[]>([]);
+  const [driveFiles, setDriveFiles] = useState<DriveFileMeta[]>([]);
+  const [drivePicker, setDrivePicker] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const canSubmit = INTAKE_STEPS.every((s) => fields[s.id].trim().length > 0);
+  const canSubmit = REQUIRED_FIELDS.every((id) => fields[id].trim().length > 0);
 
   function updateField(id: IntakeStepId, value: string) {
     setFields((prev) => ({ ...prev, [id]: value }));
@@ -72,46 +91,59 @@ export function IntakeForm({ onComplete }: IntakeFormProps) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
-    onComplete({ ...fields, files });
+    onComplete({
+      topic: fields.topic,
+      audience: fields.audience,
+      level: fields.level,
+      duration: fields.duration || undefined,
+      objective: fields.objective || undefined,
+      files,
+      driveFiles: driveFiles.length ? driveFiles : undefined,
+    });
   }
 
   return (
-    <div className="flex flex-1 items-start justify-center overflow-y-auto px-6 py-10">
+    <div className="flex flex-1 items-start justify-center overflow-y-auto px-4 py-6 sm:px-6 sm:py-10">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
         className="w-full max-w-xl"
-      >
-        {/* Header */}
-        <div className="mb-8 flex items-center gap-3">
-          <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-xl">
-            <GraduationCap className="text-primary h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold">Set up your training</h1>
-            <p className="text-muted-foreground text-sm">
-              Fill in the five fields and I&apos;ll build your complete deck.
-            </p>
-          </div>
-        </div>
+      >        
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          {/* The 5 intake fields */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-7">
           {INTAKE_STEPS.map((step) => {
             const Icon = step.icon;
             const value = fields[step.id];
+            const isOptional = "optional" in step && step.optional;
             const isObjective = step.id === "objective";
+            const isLevel = step.id === "level";
 
             return (
-              <div key={step.id} className="flex flex-col gap-1.5">
+              <div key={step.id} className="flex flex-col gap-2">
                 <label className="flex items-center gap-1.5 text-sm font-medium">
                   <Icon className="text-primary/70 h-3.5 w-3.5" />
                   {step.label}
-                  <span className="text-destructive ml-0.5">*</span>
+                  {isOptional ? (
+                    <span className="text-muted-foreground font-normal">(optional)</span>
+                  ) : (
+                    <span className="text-destructive ml-0.5">*</span>
+                  )}
                 </label>
-                <p className="text-muted-foreground -mt-0.5 text-xs">{step.description}</p>
-                {isObjective ? (
+                {isLevel ? (
+                  <Select value={value} onValueChange={(v) => updateField(step.id, v)}>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue placeholder="Select knowledge level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LEVEL_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : isObjective ? (
                   <Textarea
                     value={value}
                     onChange={(e) => updateField(step.id, e.target.value)}
@@ -132,15 +164,12 @@ export function IntakeForm({ onComplete }: IntakeFormProps) {
           })}
 
           {/* File upload */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <label className="flex items-center gap-1.5 text-sm font-medium">
               <Paperclip className="text-primary/70 h-3.5 w-3.5" />
               Reference documents
               <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
-            <p className="text-muted-foreground -mt-0.5 text-xs">
-              Existing slides, outlines, or notes to inform the training.
-            </p>
 
             <div
               onDragOver={handleDragOver}
@@ -196,6 +225,57 @@ export function IntakeForm({ onComplete }: IntakeFormProps) {
                 ))}
               </motion.ul>
             )}
+
+            <div className="mt-2 flex items-center gap-2">
+              <div className="bg-border h-px flex-1" />
+              <span className="text-muted-foreground text-[10px] uppercase">or</span>
+              <div className="bg-border h-px flex-1" />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2 w-full justify-center gap-2"
+              onClick={() => setDrivePicker(true)}
+            >
+              <GoogleG size={15} /> Add from Google Drive
+            </Button>
+            {driveFiles.length > 0 && (
+              <motion.ul
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col gap-1 pt-1"
+              >
+                {driveFiles.map((f) => (
+                  <li
+                    key={f.id}
+                    className="bg-muted/50 flex items-center justify-between rounded-lg px-3 py-1.5 text-xs"
+                  >
+                    <span className="flex items-center gap-1.5 truncate">
+                      <GoogleG size={12} />
+                      {f.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setDriveFiles((p) => p.filter((d) => d.id !== f.id))}
+                      className="text-muted-foreground hover:text-foreground ml-2 shrink-0"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </li>
+                ))}
+              </motion.ul>
+            )}
+            <GoogleDrivePicker
+              open={drivePicker}
+              onOpenChange={setDrivePicker}
+              onConfirm={(picked) =>
+                setDriveFiles((prev) => {
+                  const ids = new Set(prev.map((p) => p.id));
+                  return [...prev, ...picked.filter((p) => !ids.has(p.id))];
+                })
+              }
+            />
           </div>
 
           {/* Submit */}
@@ -205,7 +285,7 @@ export function IntakeForm({ onComplete }: IntakeFormProps) {
             className="mt-2 w-full"
             size="lg"
           >
-            Start Building →
+            Next →
           </Button>
         </form>
       </motion.div>
