@@ -38,7 +38,7 @@ import { api } from "~/trpc/react";
 
 import { analyzeSlide, slideStatus, type Issue } from "./attention";
 import { DraftReview } from "./draft-review";
-import { GenerateTraining } from "./generate-training";
+import { BuildTraining } from "./build-training";
 import { SAMPLE_DECK } from "./sample-deck";
 import { SlideCanvas } from "./slide-canvas";
 import {
@@ -100,10 +100,13 @@ export function SlideBuilder({
   initialDeck,
   persistence = { kind: "local" },
   backHref = "/",
+  projectId,
 }: {
   initialDeck?: Deck;
   persistence?: Persistence;
   backHref?: string;
+  /** Required for the in-project build-training flow (uploads + grounding). */
+  projectId?: string;
 }) {
   const isProject = persistence.kind === "project";
   const deckId = persistence.kind === "project" ? persistence.deckId : "";
@@ -269,13 +272,12 @@ export function SlideBuilder({
     }
   }
 
-  // ---- EMPTY DECK: generate real slides from the training framework ------
-  if (isProject && deck.slides.length === 0) {
+  // ---- EMPTY DECK: the build-training flow (intake → refine → real gen) ---
+  if (isProject && deck.slides.length === 0 && projectId) {
     return (
-      <GenerateTraining
+      <BuildTraining
         deckId={deckId}
-        defaultTopic={deck.title?.replace(/ — training$/, "")}
-        backHref={backHref}
+        projectId={projectId}
         onGenerated={({ title, slides }) => {
           firstSave.current = true; // server already saved
           setDeck((d) => ({ ...d, title, slides, stage: "draft", feedback: [] }));
@@ -498,18 +500,18 @@ export function SlideBuilder({
 
       <div className="flex min-h-0 flex-1">
         {/* Thumbnail rail */}
-        <div className="bg-muted/30 hidden w-56 shrink-0 flex-col border-r md:flex">
+        <div className="bg-muted/30 hidden min-h-0 w-56 shrink-0 flex-col border-r md:flex">
           <button
             onClick={() => setOnlyFlagged((v) => !v)}
             className={cn(
-              "flex items-center gap-1.5 border-b px-3 py-2 text-xs transition-colors",
+              "flex shrink-0 items-center gap-1.5 border-b px-3 py-2 text-xs transition-colors",
               onlyFlagged ? "bg-amber-500/10 text-amber-600" : "text-muted-foreground hover:bg-accent/50",
             )}
           >
             <Filter className="h-3.5 w-3.5" />
             {onlyFlagged ? "Showing flagged only" : "Filter: needs attention"}
           </button>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="min-h-0 flex-1">
             <div className="space-y-2 p-3">
               {deck.slides.map((s, i) => {
                 const status = slideStatus(s);

@@ -26,6 +26,15 @@ function provider(model: string): LanguageModel {
 }
 
 /**
+ * Build a model by its id using the configured provider — same provider/keys
+ * as the app, but with an explicit model id. Used by tooling (e.g. the cost
+ * benchmark) to measure arbitrary models without touching the .env defaults.
+ */
+export function modelFor(modelId: string): LanguageModel {
+  return provider(modelId);
+}
+
+/**
  * One place to pick the LLM. Swap provider/model by editing `.env`
  * (AI_PROVIDER / AI_MODEL) — no code change needed mid-hackathon.
  *

@@ -50,18 +50,8 @@ function withOverride(base: CSSProperties, ov?: ElementStyle): CSSProperties {
   };
 }
 
-/** Render `**word**` runs in `accent`. Used in static (non-edit) mode only. */
-function emphasize(text: string, accent: string) {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((p, i) =>
-    p.startsWith("**") && p.endsWith("**") ? (
-      <span key={i} style={{ color: accent, fontWeight: 600 }}>
-        {p.slice(2, -2)}
-      </span>
-    ) : (
-      <span key={i}>{p}</span>
-    ),
-  );
-}
+/** Strip legacy **emphasis** markers so they never render as literal asterisks. */
+const strip = (text: string) => (text ?? "").replace(/\*\*/g, "");
 
 /**
  * A text element that is static when rendering thumbnails/exports, and a
@@ -73,33 +63,27 @@ function SlideText({
   id,
   style,
   text,
-  accent,
-  emphasis,
 }: {
   id: string;
   style: CSSProperties;
   text: string;
-  accent: string;
-  /** Render **word** emphasis in static mode. */
+  /** Accent colour (kept for API symmetry; emphasis markup is no longer used). */
+  accent?: string;
   emphasis?: boolean;
 }) {
   const ctx = useContext(SlideEditContext);
   const ref = useRef<HTMLDivElement>(null);
   const finalStyle = withOverride(style, ctx.overrides[id]);
+  const clean = strip(text);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (document.activeElement !== el && el.innerText !== text)
-      el.innerText = text ?? "";
-  }, [text]);
+    if (document.activeElement !== el && el.innerText !== clean) el.innerText = clean;
+  }, [clean]);
 
   if (!ctx.editable) {
-    return (
-      <div style={finalStyle}>
-        {emphasis ? emphasize(text, accent) : text}
-      </div>
-    );
+    return <div style={finalStyle}>{clean}</div>;
   }
 
   const selected = ctx.selectedId === id;
@@ -329,7 +313,7 @@ function LightHeader({ slide, accent }: { slide: Slide; accent: string }) {
           letterSpacing: "-0.01em",
           color: MVX.primary,
           marginTop: slide.eyebrow !== undefined ? 8 : 0,
-          maxWidth: 1000,
+          maxWidth: 880, // clear of the top-right wordmark
         }}
       />
       <div
@@ -348,24 +332,24 @@ function ContentSlide({ slide }: { slide: Slide }) {
         <LightHeader slide={slide} accent={accent} />
         <div
           style={{
-            marginTop: 36,
+            marginTop: 28,
             display: "flex",
             flexDirection: "column",
-            gap: 20,
-            maxWidth: 1040,
+            gap: 14,
+            maxWidth: 1000,
           }}
         >
           {(slide.bullets ?? []).map((b, i) => (
             <div
               key={i}
-              style={{ display: "flex", gap: 16, color: MVX.primary }}
+              style={{ display: "flex", gap: 14, color: MVX.primary }}
             >
               <span
                 style={{
-                  marginTop: 11,
-                  width: 9,
-                  height: 9,
-                  borderRadius: 9,
+                  marginTop: 10,
+                  width: 8,
+                  height: 8,
+                  borderRadius: 8,
                   background: accent,
                   flexShrink: 0,
                 }}
@@ -374,11 +358,10 @@ function ContentSlide({ slide }: { slide: Slide }) {
                 id={`bullet:${i}`}
                 accent={accent}
                 text={b}
-                emphasis
                 style={{
                   fontFamily: FONT_BODY,
-                  fontSize: 23,
-                  lineHeight: 1.35,
+                  fontSize: 21,
+                  lineHeight: 1.3,
                   color: MVX.primary,
                   flex: 1,
                 }}

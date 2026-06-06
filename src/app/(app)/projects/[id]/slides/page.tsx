@@ -25,6 +25,7 @@ export default async function ProjectSlidesPage({
   return (
     <SlideBuilder
       persistence={{ kind: "project", deckId: deck.id }}
+      projectId={id}
       initialDeck={{
         title: deck.title,
         slides: deck.slides as unknown as Slide[],

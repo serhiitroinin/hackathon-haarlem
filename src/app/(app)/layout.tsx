@@ -1,15 +1,16 @@
 import { ProjectSidebar } from "~/components/projects/project-sidebar";
+import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar";
 
-// Shared shell for the project-centric app: a persistent sidebar (project list +
-// creation wizard) alongside the active view. The sidebar survives navigation
-// between the hub (/) and a project (/projects/[id]).
+// Project-centric shell: a shadcn collapsible sidebar (project list + creation
+// wizard) alongside the active view. Collapse with the rail, the header trigger,
+// or ⌘/Ctrl+B; the state persists in a cookie.
 export default function AppLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <div className="flex h-screen overflow-hidden">
+    <SidebarProvider className="h-screen overflow-hidden">
       <ProjectSidebar />
-      <main className="min-w-0 flex-1 overflow-hidden">{children}</main>
-    </div>
+      <SidebarInset className="min-w-0 overflow-hidden">{children}</SidebarInset>
+    </SidebarProvider>
   );
 }

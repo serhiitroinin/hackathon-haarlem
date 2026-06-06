@@ -1,12 +1,8 @@
-import { type Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { MaverxWorkspace } from "~/components/maverx/maverx-workspace";
-
-export const metadata: Metadata = {
-  title: "Maverx Training Builder",
-  description: "One sentence → a complete, editable PowerPoint deck in Maverx house style.",
-};
-
+// The training builder is now the project-scoped build flow
+// (/projects/[id]/slides). Keep this path working by sending people to pick or
+// create a project, where the real, grounded flow lives.
 export default function MaverxPage() {
-  return <MaverxWorkspace />;
+  redirect("/");
 }

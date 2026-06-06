@@ -1,6 +1,6 @@
 import "server-only";
 
-import { generateObject } from "ai";
+import { generateObject, type LanguageModel } from "ai";
 
 import { getContentModel } from "~/lib/ai";
 import {
@@ -32,12 +32,20 @@ NON-NEGOTIABLE RULES:
    reflection) and a post-bite (after the session: reflection, an assignment, or
    further reading). Each is a short intro + concrete items.`;
 
-/** Generate a full Tier-1 training plan from the completed intake. */
-export async function generateTrainingPlan(intake: Intake): Promise<TrainingPlan> {
+/**
+ * The full generateObject call. Returns the SDK result (object + `usage` +
+ * `providerMetadata`) and lets the caller inject a model — so tooling like the
+ * cost benchmark can measure token usage and compare models against the EXACT
+ * production prompt + schema. App code should prefer `generateTrainingPlan`.
+ */
+export async function generateTrainingPlanRaw(
+  intake: Intake,
+  model: LanguageModel = getContentModel(),
+) {
   const target = slideBudget(intake.durationMinutes);
 
-  const { object } = await generateObject({
-    model: getContentModel(),
+  const result = await generateObject({
+    model,
     schema: trainingPlanSchema,
     system: SYSTEM,
     prompt: `Create a single complete training.
@@ -55,6 +63,12 @@ exercise an active application of the immediately preceding theory.`,
   });
 
   // The model must echo the intake into meta; enforce it so downstream is exact.
-  object.meta = intake;
+  result.object.meta = intake;
+  return result;
+}
+
+/** Generate a full Tier-1 training plan from the completed intake. */
+export async function generateTrainingPlan(intake: Intake): Promise<TrainingPlan> {
+  const { object } = await generateTrainingPlanRaw(intake);
   return object;
 }

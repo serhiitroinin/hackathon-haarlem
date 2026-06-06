@@ -1,7 +1,6 @@
 "use client";
 
 import { Check, ChevronDown, Moon, Sun } from "lucide-react";
-import Image from "next/image";
 import { useTheme } from "next-themes";
 import { useState } from "react";
 
@@ -44,16 +43,8 @@ export function WorkspaceHeader({ step }: WorkspaceHeaderProps) {
   return (
     <div className="border-b bg-card">
       <div className="flex h-14 items-center px-3 sm:px-6">
-        {/* Left: company logo */}
-        <div className="flex flex-1 items-center">
-          <Image
-            src={isDark ? "/maverx-logo.png" : "/maverx-logo-black.png"}
-            alt="Maverx"
-            width={200}
-            height={100}
-            className="h-9 w-auto object-contain"
-          />
-        </div>
+        {/* Left: spacer (brand logo lives in the sidebar) */}
+        <div className="flex-1" />
 
         {/* Center: steps */}
         <div className="flex items-center gap-1 sm:gap-2">

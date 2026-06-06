@@ -3,116 +3,108 @@ import "server-only";
 import { generateObject } from "ai";
 import { z } from "zod";
 
+import { type Slide, type SpeakerNotes } from "~/components/builder/types";
 import { getContentModel } from "~/lib/ai";
-import { type Deck, type FeedbackMsg, type Slide } from "~/components/builder/types";
+import { type Deck } from "~/components/builder/types";
 
-/** Content-only slide schema the model revises (UI concerns like overrides and
- * comment pins are stripped before the call and not regenerated). */
-const slideSchema = z.object({
-  id: z.string().describe("Keep the original id when revising an existing slide"),
-  kind: z.enum([
-    "cover",
-    "section",
-    "agenda",
-    "content",
-    "example",
-    "exercise",
-    "wrapup",
-    "timetable",
-  ]),
-  accent: z.enum(["purple", "rose", "orange", "teal"]),
-  background: z
-    .enum(["white", "offWhite", "bgLavender", "bgRose", "bgOrange"])
-    .optional()
-    .describe(
-      "Light-slide background tint (cover/section ignore it): white | offWhite | bgLavender (lavender) | bgRose (rose) | bgOrange (orange)",
-    ),
-  eyebrow: z.string().optional(),
+/**
+ * Revise a draft deck against its inline comments + chat feedback. PER-SLIDE and
+ * PARALLEL (wall-clock ≈ the slowest single slide, not a 3-min whole-deck call).
+ * Slides with no global feedback and no comments are left untouched — so targeted
+ * feedback only re-runs the slides it concerns.
+ */
+
+const revisionSchema = z.object({
   title: z.string(),
+  eyebrow: z.string().optional(),
   subtitle: z.string().optional(),
-  bullets: z.array(z.string()).optional().describe("Use **word** to emphasise"),
+  bullets: z.array(z.string()).optional().describe("Plain text, no markdown/** markers"),
   agenda: z
     .array(z.object({ label: z.string(), desc: z.string().optional() }))
     .optional(),
   rows: z
-    .array(
-      z.object({ time: z.string(), module: z.string(), activities: z.string() }),
-    )
+    .array(z.object({ time: z.string(), module: z.string(), activities: z.string() }))
     .optional(),
-  notes: z
-    .object({
-      aim: z.string(),
-      time: z.string(),
-      instructions: z.string(),
-      keyPoints: z.string(),
-      linkToReality: z.string(),
-      debrief: z.string(),
-    })
-    .optional(),
+  background: z
+    .enum(["white", "offWhite", "bgLavender", "bgRose", "bgOrange"])
+    .optional()
+    .describe("Light-slide background tint (cover/section ignore it)"),
+  notes: z.object({
+    aim: z.string(),
+    instructions: z.string(),
+    keyPoints: z.string(),
+    linkToReality: z.string(),
+    debrief: z.string(),
+  }),
 });
 
-const deckSchema = z.object({
-  title: z.string(),
-  slides: z.array(slideSchema).min(1),
-});
+const SYSTEM = `You revise ONE slide of a Maverx training deck against reviewer
+feedback. Keep the slide's role and layout (kind). Keep titles tight (≤8 words,
+33pt), bullets concise (≤6, ≤12 words, plain text — no "**" markers, no "/"). Fill all
+five note fields. Only change what the feedback asks for; otherwise keep it close
+to the original. If feedback asks for a background/colour change, set "background".`;
 
-const SYSTEM = `You are a senior instructional designer revising a Maverx training deck.
-You receive the current draft as structured data plus reviewer feedback (inline
-comments pinned to specific slides, and general chat feedback). Apply the feedback
-faithfully and return the full revised deck.
-
-Rules:
-- Address every comment and feedback message; if feedback conflicts, prefer the
-  most recent chat message.
-- Keep each slide's "id" stable when you are revising that same slide so edits map
-  back; only invent new ids for genuinely new slides.
-- Preserve the Maverx didactic structure and tone. Keep titles tight (they render
-  at 33pt), bullets concise (3-6 per slide), and fill ALL six speaker-note fields.
-- Use **word** to emphasise key words in bullets. Don't use "/" — write "and"/"or".
-- Keep "kind" and "accent" unless the feedback implies a change.
-- If feedback asks to change a slide's background/colour, set "background" to one
-  of: white, offWhite, bgLavender, bgRose, bgOrange (light slides only).`;
-
-/** Strip UI-only fields the model shouldn't manage (keep `background` so the
- * model can see and change it). */
+/** Strip UI-only fields before showing the slide to the model. */
 function toContent(slide: Slide) {
-  const { overrides: _o, comments: _c, ...content } = slide;
-  return content;
+  const { overrides: _o, comments: _c, ...rest } = slide;
+  return rest;
 }
 
-function feedbackBlock(deck: Deck): string {
-  const commentLines: string[] = [];
-  deck.slides.forEach((s, i) => {
-    for (const c of s.comments ?? [])
-      commentLines.push(`- Slide ${i + 1} ("${s.title}"): ${c.text}`);
-  });
-  const chat = (deck.feedback ?? [])
-    .filter((m) => m.role === "user")
-    .map((m) => `- ${m.text}`);
+async function reviseOne(slide: Slide, globalFeedback: string): Promise<Slide> {
+  const comments = (slide.comments ?? []).map((c) => c.text.trim()).filter(Boolean);
+  // Nothing to do for this slide → keep it, just drop its (consumed) comments.
+  if (!globalFeedback && comments.length === 0) {
+    return { ...slide, comments: [] };
+  }
 
-  return [
-    commentLines.length ? `Inline comments:\n${commentLines.join("\n")}` : "",
-    chat.length ? `Chat feedback:\n${chat.join("\n")}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n\n") || "(no explicit feedback — tighten and polish the deck)";
+  const prompt =
+    `Current slide:\n${JSON.stringify(toContent(slide), null, 2)}\n\n` +
+    (globalFeedback ? `General feedback for the whole deck:\n${globalFeedback}\n\n` : "") +
+    (comments.length ? `Comments pinned on THIS slide:\n- ${comments.join("\n- ")}\n\n` : "") +
+    `Return the revised slide.`;
+
+  try {
+    const { object } = await generateObject({
+      model: getContentModel(),
+      schema: revisionSchema,
+      system: SYSTEM,
+      prompt,
+    });
+    const notes: SpeakerNotes = {
+      aim: object.notes.aim,
+      time: slide.notes?.time ?? "", // computed time is preserved
+      instructions: object.notes.instructions,
+      keyPoints: object.notes.keyPoints,
+      linkToReality: object.notes.linkToReality,
+      debrief: object.notes.debrief,
+    };
+    return {
+      ...slide,
+      title: object.title,
+      eyebrow: object.eyebrow ?? slide.eyebrow,
+      subtitle: object.subtitle ?? slide.subtitle,
+      bullets: object.bullets ?? slide.bullets,
+      agenda: object.agenda ?? slide.agenda,
+      rows: object.rows ?? slide.rows,
+      background: object.background ?? slide.background,
+      notes,
+      overrides: {},
+      comments: [],
+    };
+  } catch (e) {
+    console.warn("[reviseOne] failed, keeping original:", e instanceof Error ? e.message : e);
+    return { ...slide, comments: [] };
+  }
 }
 
-/** Revise a draft deck against its comments + chat feedback into editable slides. */
 export async function reviseSlides(deck: Deck): Promise<Slide[]> {
-  const current = { title: deck.title, slides: deck.slides.map(toContent) };
+  const feedback = Array.isArray(deck.feedback) ? deck.feedback : [];
+  const globalFeedback = feedback
+    .filter((m) => m?.role === "user")
+    .map((m) => m.text?.trim())
+    .filter(Boolean)
+    .join("\n");
 
-  const { object } = await generateObject({
-    model: getContentModel(),
-    schema: deckSchema,
-    system: SYSTEM,
-    prompt: `Current draft deck (JSON):\n${JSON.stringify(current, null, 2)}\n\nReviewer feedback:\n${feedbackBlock(deck)}\n\nReturn the full revised deck.`,
-  });
-
-  // Map back to builder slides: fresh, editable, no leftover comments/overrides.
-  return object.slides.map((s) => ({
-    ...s,
-    overrides: {},
-    comments: [],
-  })) as Slide[];
+  const slides = Array.isArray(deck.slides) ? deck.slides : [];
+  return Promise.all(slides.map((s) => reviseOne(s, globalFeedback)));
 }

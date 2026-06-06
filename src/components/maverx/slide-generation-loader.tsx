@@ -2,23 +2,8 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
-
-const STATUS_MESSAGES = [
-  "Analysing your requirements…",
-  "Designing slide structure…",
-  "Generating cover slide…",
-  "Writing speaker notes…",
-  "Adding exercises…",
-  "Building timetable…",
-  "Applying Maverx style…",
-  "Checking quality…",
-  "Finalising your deck…",
-];
 
 const SLIDE_COUNT = 9;
-const STAGGER_MS = 380;
-const DONE_DELAY_MS = 600;
 
 const SLIDE_LABELS = [
   "Cover",
@@ -78,47 +63,31 @@ function SlideThumbnail({ index, visible }: { index: number; visible: boolean })
   );
 }
 
-export function SlideGenerationLoader({ onDone }: { onDone: () => void }) {
-  const [revealedCount, setRevealedCount] = useState(0);
-  const [statusIndex, setStatusIndex] = useState(0);
-  const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    // reveal slides one by one
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    for (let i = 0; i < SLIDE_COUNT; i++) {
-      timers.push(
-        setTimeout(() => setRevealedCount(i + 1), (i + 1) * STAGGER_MS),
-      );
-    }
-    // mark done after all slides + brief pause
-    const doneTimer = setTimeout(
-      () => setDone(true),
-      SLIDE_COUNT * STAGGER_MS + DONE_DELAY_MS,
-    );
-    // call onDone 600 ms after done state
-    const exitTimer = setTimeout(
-      () => onDone(),
-      SLIDE_COUNT * STAGGER_MS + DONE_DELAY_MS + 600,
-    );
-    return () => {
-      timers.forEach(clearTimeout);
-      clearTimeout(doneTimer);
-      clearTimeout(exitTimer);
-    };
-  }, [onDone]);
-
-  // cycle status messages
-  useEffect(() => {
-    if (done) return;
-    const interval = setInterval(
-      () => setStatusIndex((i) => (i + 1) % STATUS_MESSAGES.length),
-      650,
-    );
-    return () => clearInterval(interval);
-  }, [done]);
-
-  const progress = Math.round((revealedCount / SLIDE_COUNT) * 100);
+/**
+ * Controlled progress UI for REAL generation. Driven by props streamed from
+ * /api/slides/generate: `done`/`total` are actual completed LLM steps, `stage`
+ * is the current step label, `finished` flips when the deck is saved.
+ */
+export function SlideGenerationLoader({
+  stage = "Starting…",
+  done = 0,
+  total = 0,
+  finished = false,
+}: {
+  stage?: string;
+  done?: number;
+  total?: number;
+  finished?: boolean;
+}) {
+  const progress = finished
+    ? 100
+    : total > 0
+      ? Math.min(96, Math.round((done / total) * 100))
+      : 8;
+  // Reveal thumbnails proportionally to real progress.
+  const revealedCount = finished
+    ? SLIDE_COUNT
+    : Math.max(1, Math.round((progress / 100) * SLIDE_COUNT));
 
   return (
     <motion.div
@@ -136,9 +105,9 @@ export function SlideGenerationLoader({ onDone }: { onDone: () => void }) {
         {/* header */}
         <div className="flex flex-col items-center gap-3 text-center">
           <motion.div
-            animate={done ? { scale: 1.1 } : { rotate: 360 }}
+            animate={finished ? { scale: 1.1 } : { rotate: 360 }}
             transition={
-              done
+              finished
                 ? { type: "spring", stiffness: 300, damping: 15 }
                 : { duration: 3, repeat: Infinity, ease: "linear" }
             }
@@ -149,18 +118,18 @@ export function SlideGenerationLoader({ onDone }: { onDone: () => void }) {
 
           <div>
             <h2 className="text-base font-semibold tracking-tight">
-              {done ? "Your deck is ready!" : "AI is building your deck…"}
+              {finished ? "Your deck is ready!" : "AI is building your deck…"}
             </h2>
             <AnimatePresence mode="wait">
               <motion.p
-                key={done ? "done" : statusIndex}
+                key={finished ? "done" : stage}
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.22 }}
                 className="mt-0.5 text-sm text-muted-foreground"
               >
-                {done ? "Opening slide editor…" : STATUS_MESSAGES[statusIndex]}
+                {finished ? "Opening slide editor…" : stage}
               </motion.p>
             </AnimatePresence>
           </div>
@@ -176,7 +145,13 @@ export function SlideGenerationLoader({ onDone }: { onDone: () => void }) {
         {/* progress bar + counter */}
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{done ? "✓ All slides generated" : `${revealedCount} of ${SLIDE_COUNT} slides`}</span>
+            <span>
+              {finished
+                ? "✓ All slides generated"
+                : total > 0
+                  ? `Step ${Math.min(done + 1, total)} of ${total}`
+                  : "Preparing…"}
+            </span>
             <span>{progress}%</span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-muted">

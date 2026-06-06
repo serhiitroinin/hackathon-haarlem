@@ -94,7 +94,7 @@ export function ProjectWizard({ collapsed }: { collapsed?: boolean }) {
       toast.success(`Project “${project.title}” created`);
       setOpen(false);
       reset();
-      router.push(`/projects/${project.id}`);
+      router.push(`/projects/${project.id}/slides`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not create project");
       setBusy(false);

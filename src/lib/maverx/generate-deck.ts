@@ -52,8 +52,8 @@ const blankNotes: Notes = {
 const placeholder = (title: string): Fill => ({ title, notes: blankNotes });
 
 const RULES = `Keep titles tight (≤8 words; 33pt). Bullets concise: ≤6 per slide,
-≤12 words each, one idea per slide, no paragraphs, no images-of-text. Use **word**
-to emphasise. Avoid "/" — write "and"/"or". Fill ALL note fields (do NOT set time —
+≤12 words each, one idea per slide, no paragraphs, no images-of-text. Write plain
+text — NO markdown or "**" markers. Avoid "/" — write "and"/"or". Fill ALL note fields (do NOT set time —
 it is computed). Ground content in the provided material; don't invent specific facts.`;
 
 const brief = (i: Intake) =>
@@ -103,15 +103,27 @@ async function genKickoff(intake: Intake, budget: Budget, grounding: string) {
   return object;
 }
 
+export type GenProgress = { stage: string; done: number; total: number };
+
 export async function generateDeck(
   intake: Intake,
   groundingRaw: string,
+  onProgress?: (p: GenProgress) => void,
 ): Promise<{ title: string; slides: Slide[] }> {
   const budget = computeBudget(intake);
   const scaffold = buildScaffold(budget);
   const grounding = groundingRaw.slice(0, 9000);
   const sys = `You write training slides for a Maverx deck. ${RULES}`;
   const ctx = grounding ? `\nSource material:\n${grounding}\n` : "";
+
+  // Real progress: 1 outline step + 3 fills/module + 1 wrap-up.
+  const total = 1 + budget.modules * 3 + 1;
+  let doneCount = 0;
+  const tick = (stage: string) => {
+    doneCount += 1;
+    onProgress?.({ stage, done: doneCount, total });
+  };
+  onProgress?.({ stage: "Planning the training outline", done: 0, total });
 
   // Phase 1: outline + kick-off. Concurrently probe the fast model with a tiny
   // call — it overlaps the (slower) kick-off, so it's "free", and it trips
@@ -127,6 +139,7 @@ export async function generateDeck(
   });
   const kickoff = await genKickoff(intake, budget, grounding);
   await probe;
+  tick("Outline ready — writing slides");
 
   const mods = kickoff.modules.slice(0, budget.modules);
   while (mods.length < budget.modules)
@@ -147,15 +160,24 @@ export async function generateDeck(
         genSlides(
           sys,
           `${head}\nProduce ${budget.theoryPerModule} THEORY slide(s): each one concept — definition + key components.`,
-        ).then((s) => (byModule[i]!.theory = s)),
+        ).then((s) => {
+          byModule[i]!.theory = s;
+          tick(`Module ${i + 1}: theory`);
+        }),
         genSlides(
           sys,
           `${head}\nProduce 1 EXAMPLE slide: a named, recognizable worked illustration from the audience's world applying this theory.`,
-        ).then((s) => (byModule[i]!.example = s)),
+        ).then((s) => {
+          byModule[i]!.example = s;
+          tick(`Module ${i + 1}: example`);
+        }),
         genSlides(
           sys,
           `${head}\nProduce 1 EXERCISE slide: an active task applying this theory — task, format (solo/pair/group), time, deliverable, success criteria.`,
-        ).then((s) => (byModule[i]!.exercise = s)),
+        ).then((s) => {
+          byModule[i]!.exercise = s;
+          tick(`Module ${i + 1}: exercise`);
+        }),
       ];
     }),
     genSlides(
@@ -163,6 +185,7 @@ export async function generateDeck(
       `${brief(intake)}\nModules: ${mods.map((m) => m.title).join("; ")}\nProduce 1 WRAP-UP slide: 3 key takeaways tied to the objective + next steps and a pointer to the post-bite.`,
     ).then((s) => {
       if (s[0]) wrapup = s[0];
+      tick("Wrap-up & takeaways");
     }),
   ]);
 

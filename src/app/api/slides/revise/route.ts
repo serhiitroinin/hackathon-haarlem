@@ -18,10 +18,12 @@ export async function POST(req: Request) {
   const row = await db.deck.findUnique({ where: { id: deckId } });
   if (!row) return Response.json({ error: "Deck not found" }, { status: 404 });
 
+  const slides = (row.slides as unknown as Deck["slides"]) ?? [];
+  const rawFeedback = row.feedback as unknown;
   const deck: Deck = {
     title: row.title,
-    slides: (row.slides as unknown as Deck["slides"]) ?? [],
-    feedback: (row.feedback as unknown as Deck["feedback"]) ?? [],
+    slides: Array.isArray(slides) ? slides : [],
+    feedback: Array.isArray(rawFeedback) ? (rawFeedback as Deck["feedback"]) : [],
   };
   if (deck.slides.length === 0) {
     return Response.json({ error: "Empty deck" }, { status: 400 });
