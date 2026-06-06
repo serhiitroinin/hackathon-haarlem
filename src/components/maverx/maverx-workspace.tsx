@@ -9,19 +9,27 @@ import { IntakeForm } from "~/components/maverx/intake-form";
 import { FollowUpQuestions } from "~/components/maverx/follow-up-questions";
 import { SlideGenerationLoader } from "~/components/maverx/slide-generation-loader";
 import { SlideBuilder } from "~/components/builder/slide-builder";
-import { SAMPLE_DECK } from "~/components/builder/sample-deck";
+import { SAMPLE_DECK, MOCK_DECK } from "~/components/builder/sample-deck";
+import { DEMO_QUESTIONS, DEMO_ANSWERS } from "~/components/maverx/mock-data";
+import { env } from "~/env.js";
 
 export function MaverxWorkspace() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [intakeData, setIntakeData] = useState<IntakeFormData | null>(null);
   const [loadingStep3, setLoadingStep3] = useState(false);
   const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedQuestion[] | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(env.NEXT_PUBLIC_DEMO_MODE === "true");
 
   function handleIntakeComplete(data: IntakeFormData) {
     setIntakeData(data);
-    setGeneratedQuestions(null);
     setStep(2);
 
+    if (isDemoMode) {
+      setGeneratedQuestions(DEMO_QUESTIONS);
+      return;
+    }
+
+    setGeneratedQuestions(null);
     fetch("/api/maverx-questions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -72,17 +80,27 @@ export function MaverxWorkspace() {
       <WorkspaceHeader step={step} />
 
       <div className="flex min-h-0 flex-1 flex-col">
-        {step === 1 && <IntakeForm onComplete={handleIntakeComplete} />}
+        {step === 1 && (
+          <IntakeForm
+            onComplete={handleIntakeComplete}
+            onDemoFill={() => setIsDemoMode(true)}
+            isDemoMode={isDemoMode}
+          />
+        )}
         {step === 2 && intakeData && (
           <FollowUpQuestions
             intakeData={intakeData}
             questions={generatedQuestions}
             onComplete={handleQuestionsComplete}
+            defaultAnswers={isDemoMode ? DEMO_ANSWERS : undefined}
           />
         )}
         {step === 3 && loadingStep3 && <SlideGenerationLoader onDone={handleLoaderDone} />}
         {step === 3 && !loadingStep3 && (
-          <SlideBuilder initialDeck={SAMPLE_DECK} persistence={{ kind: "local" }} />
+          <SlideBuilder
+            initialDeck={isDemoMode ? MOCK_DECK : SAMPLE_DECK}
+            persistence={{ kind: "local" }}
+          />
         )}
       </div>
     </div>

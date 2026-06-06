@@ -2,10 +2,11 @@
 
 import { Paperclip, Upload, X } from "lucide-react";
 import { motion } from "motion/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { IntakeFormData, IntakeStepId } from "~/components/maverx/types";
 import { INTAKE_STEPS } from "~/components/maverx/constants";
+import { getDemoIntakeData } from "~/components/maverx/mock-data";
 import { GoogleDrivePicker, GoogleG } from "~/components/google/google-drive-picker";
 import type { DriveFileMeta } from "~/lib/google/fake-drive";
 import { Button } from "~/components/ui/button";
@@ -22,6 +23,8 @@ import { cn } from "~/lib/utils";
 
 export interface IntakeFormProps {
   onComplete: (data: IntakeFormData) => void;
+  onDemoFill?: () => void;
+  isDemoMode?: boolean;
 }
 
 type FieldValues = Record<IntakeStepId, string>;
@@ -42,13 +45,32 @@ const LEVEL_OPTIONS = [
 
 const REQUIRED_FIELDS: IntakeStepId[] = ["topic", "audience", "level"];
 
-export function IntakeForm({ onComplete }: IntakeFormProps) {
+export function IntakeForm({ onComplete, onDemoFill, isDemoMode }: IntakeFormProps) {
   const [fields, setFields] = useState<FieldValues>(INITIAL_FIELDS);
   const [files, setFiles] = useState<File[]>([]);
   const [driveFiles, setDriveFiles] = useState<DriveFileMeta[]>([]);
   const [drivePicker, setDrivePicker] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function fillDemo() {
+    const demo = getDemoIntakeData();
+    setFields({
+      topic: demo.topic,
+      audience: demo.audience,
+      level: demo.level,
+      duration: demo.duration ?? "",
+      objective: demo.objective ?? "",
+    });
+    setFiles(demo.files);
+    setDriveFiles([]);
+    onDemoFill?.();
+  }
+
+  useEffect(() => {
+    if (isDemoMode) fillDemo();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDemoMode]);
 
   const canSubmit = REQUIRED_FIELDS.every((id) => fields[id].trim().length > 0);
 

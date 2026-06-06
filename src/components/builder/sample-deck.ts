@@ -2,6 +2,213 @@ import { type Deck, type SpeakerNotes } from "./types";
 
 const notes = (n: SpeakerNotes) => n;
 
+export const MOCK_DECK: Deck = {
+  title: "Effective Feedback Conversations",
+  slides: [
+    {
+      id: "m-cover",
+      kind: "cover",
+      title: "Effective Feedback Conversations",
+      subtitle: "giving and receiving feedback that actually changes behaviour",
+      accent: "teal",
+      notes: notes({
+        aim: "Set a psychologically safe tone from the first slide.",
+        time: "2 min",
+        instructions:
+          "Welcome the group, introduce yourself briefly, and acknowledge that most people find feedback uncomfortable — that's the whole point of today.",
+        keyPoints: "Practical, evidence-based, and grounded in real workplace situations.",
+        linkToReality: "Ask: who has given feedback in the last two weeks and felt it landed well?",
+        debrief: "Today you leave with one conversation you've been putting off — and a plan.",
+      }),
+    },
+    {
+      id: "m-about",
+      kind: "content",
+      eyebrow: "Before we start · About this session",
+      title: "What you'll get out of today",
+      accent: "purple",
+      bullets: [
+        "**Name** the three most common reasons feedback conversations stall or backfire",
+        "**Apply** the SBI model to turn vague impressions into specific, actionable messages",
+        "**Practise** giving and receiving feedback in a low-stakes environment",
+        "**Reframe** receiving feedback as a leadership skill, not a passive act",
+        "Leave with a **concrete conversation** drafted and ready to deliver this week",
+      ],
+      notes: notes({
+        aim: "Align on outcomes and show this session is different from typical HR training.",
+        time: "3 min",
+        instructions:
+          "Walk the five outcomes; stress that the goal is one real conversation, not a certificate.",
+        keyPoints: "Every outcome is a verb — name, apply, practise, reframe, draft.",
+        linkToReality: "Ask each person to mentally pick a feedback conversation they've been avoiding.",
+        debrief: "Everyone should have a face in mind before the first break.",
+      }),
+    },
+    {
+      id: "m-timetable",
+      kind: "timetable",
+      eyebrow: "Timetable · Trainer view",
+      title: "How the two hours run",
+      accent: "orange",
+      rows: [
+        {
+          time: "20 min",
+          module: "Why it stalls",
+          activities: "Neuroscience of threat response · common avoidance patterns · group debrief",
+        },
+        {
+          time: "30 min",
+          module: "The SBI model",
+          activities: "Situation · Behaviour · Impact framework · live modelling with real examples",
+        },
+        {
+          time: "35 min",
+          module: "Practise",
+          activities: "Paired role-play with observer · debrief rounds · refinement",
+        },
+        {
+          time: "15 min",
+          module: "Receiving well",
+          activities: "SARA response model · active listening · turning feedback into a question",
+        },
+        {
+          time: "10 min",
+          module: "Commit",
+          activities: "Personal action plan · one conversation drafted · share-out",
+        },
+      ],
+      notes: notes({
+        aim: "Give trainers a clear time budget and set participant expectations.",
+        time: "1 min",
+        instructions: "Point to the shape — heavy on practice (35 min) and light on lecture.",
+        keyPoints: "110 of 120 minutes involve active participation.",
+        linkToReality: "Reassure: you won't be role-playing with strangers for long stretches.",
+        debrief: "Keep this slide visible on a secondary screen during the session.",
+      }),
+    },
+    {
+      id: "m-section1",
+      kind: "section",
+      eyebrow: "Part 1",
+      title: "Why feedback conversations stall",
+      subtitle: "threat, avoidance, and the good intentions gap",
+      accent: "rose",
+      notes: notes({
+        aim: "Reset attention and signal a shift into the diagnostic phase.",
+        time: "30 sec",
+        instructions: "Read the subtitle aloud and let it sit for a beat before moving on.",
+        keyPoints: "We're diagnosing before we prescribe.",
+        linkToReality: "",
+        debrief: "Short — this is a divider, not a teaching moment.",
+      }),
+    },
+    {
+      id: "m-theory",
+      kind: "content",
+      eyebrow: "Part 1 · Theory",
+      title: "The SBI model — three moves, not a script",
+      accent: "purple",
+      bullets: [
+        "**Situation** — anchor the conversation: when and where did this happen?",
+        "**Behaviour** — describe only what you observed, not what you inferred",
+        "**Impact** — share the effect on you, the team, or the work — not a judgement",
+        "SBI separates the **person** from the **pattern** — that's what keeps doors open",
+        "Skipping any step is the most common cause of feedback that **triggers defensiveness**",
+      ],
+      notes: notes({
+        aim: "Build a shared mental model that the whole session hangs on.",
+        time: "10 min",
+        instructions:
+          "Walk each letter with a real example. Pause after Impact — ask what the receiver might feel.",
+        keyPoints: "Observation ≠ interpretation. SBI keeps you in observable reality.",
+        linkToReality: "Compare to a GPS: you need coordinates (S), the route (B), and the destination (I).",
+        debrief: "If they remember one thing: describe behaviour, share impact, skip the label.",
+      }),
+    },
+    {
+      id: "m-example",
+      kind: "example",
+      eyebrow: "Part 1 · Example in practice",
+      title: "Turning vague frustration into a clear message",
+      accent: "teal",
+      bullets: [
+        "Before SBI: *\"You've been really disengaged lately — it's affecting the team.\"*",
+        "After SBI: *\"In Monday's stand-up [S], you left without updating your tasks [B]. The sprint board was incomplete and the team had to guess your status [I].\"*",
+        "Same intent — completely different **effect on the receiver**",
+      ],
+      notes: notes({
+        aim: "Make the model concrete by showing the before and after side by side.",
+        time: "5 min",
+        instructions:
+          "Read both versions aloud in the same tone. Ask: which version would you rather receive?",
+        keyPoints: "The second version is harder to argue with because it's factual.",
+        linkToReality: "Invite someone to share an example of vague feedback they've received.",
+        debrief: "The room will laugh at the 'before' version — that's the point.",
+      }),
+    },
+    {
+      id: "m-exercise",
+      kind: "exercise",
+      eyebrow: "Part 1 · Exercise",
+      title: "Build your own SBI message",
+      accent: "orange",
+      bullets: [
+        "Think of a **real situation** where you've been wanting to give feedback",
+        "Write out your S, B, and I — one sentence each — without using adjectives",
+        "Pair up: one person delivers, one receives, one observes and gives meta-feedback",
+        "Rotate so everyone practises the **giving** and **receiving** roles",
+      ],
+      notes: notes({
+        aim: "Apply the model to participants' real, live situations.",
+        time: "20 min",
+        instructions:
+          "Triads work best. Give 5 min to write, 10 min to role-play, 5 min to debrief in triads.",
+        keyPoints: "No invented scenarios — must use a real situation to feel the discomfort.",
+        linkToReality: "",
+        debrief: "Ask one triad to share what changed between their first attempt and their revised version.",
+      }),
+    },
+    {
+      id: "m-section2",
+      kind: "section",
+      eyebrow: "Part 2",
+      title: "Receiving feedback well",
+      subtitle: "the skill nobody teaches but everyone needs",
+      accent: "rose",
+      notes: notes({
+        aim: "Shift attention from giving to receiving — often the harder half.",
+        time: "30 sec",
+        instructions: "Acknowledge that most training stops at giving — this part is different.",
+        keyPoints: "Receiving is a leadership skill, not a passive act.",
+        linkToReality: "",
+        debrief: "Short divider — build anticipation.",
+      }),
+    },
+    {
+      id: "m-wrapup",
+      kind: "wrapup",
+      eyebrow: "Wrap up · Your commitment",
+      title: "One conversation. This week.",
+      accent: "teal",
+      bullets: [
+        "You can **name** why feedback stalls — and you know the fix",
+        "You have a **SBI framework** that keeps conversations factual and safe",
+        "You've **practised** giving and receiving in a real scenario",
+        "Your next step: **write the first sentence** of the conversation you've been avoiding",
+      ],
+      notes: notes({
+        aim: "Consolidate learning and lock in a specific, time-bound commitment.",
+        time: "10 min",
+        instructions:
+          "Ask everyone to write one name and one first sentence on a card or sticky note. Pairs share.",
+        keyPoints: "Specificity is everything — not 'I'll give more feedback' but 'I'll talk to Maya on Thursday.'",
+        linkToReality: "Remind them: the SBI message they drafted in the exercise is already half a plan.",
+        debrief: "Close on momentum — small, real, immediate. The card goes on their desk.",
+      }),
+    },
+  ],
+};
+
 /**
  * A realistic seed deck modelled on the example training in the style guide
  * ("Applied AI for Professionals"). It follows the Maverx structure

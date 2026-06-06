@@ -17,10 +17,11 @@ export interface FollowUpQuestionsProps {
   intakeData: IntakeFormData;
   questions: GeneratedQuestion[] | null;
   onComplete: (answers: Record<string, string>) => void;
+  defaultAnswers?: Record<string, string>;
 }
 
-export function FollowUpQuestions({ intakeData: _intakeData, questions, onComplete }: FollowUpQuestionsProps) {
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+export function FollowUpQuestions({ intakeData: _intakeData, questions, onComplete, defaultAnswers }: FollowUpQuestionsProps) {
+  const [answers, setAnswers] = useState<Record<string, string>>(defaultAnswers ?? {});
 
   function updateAnswer(id: string, value: string) {
     setAnswers((prev) => ({ ...prev, [id]: value }));

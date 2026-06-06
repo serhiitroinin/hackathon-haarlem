@@ -31,6 +31,8 @@ export const env = createEnv({
   client: {
     // Optional MapTiler key for nicer basemaps. Falls back to free Carto tiles.
     NEXT_PUBLIC_MAPTILER_KEY: z.string().optional(),
+    // Set to "true" to pre-fill the Maverx workspace with demo data end-to-end.
+    NEXT_PUBLIC_DEMO_MODE: z.enum(["true", "false"]).default("false"),
   },
 
   /**
@@ -46,6 +48,7 @@ export const env = createEnv({
     AI_MODEL: process.env.AI_MODEL,
     AI_CONTENT_MODEL: process.env.AI_CONTENT_MODEL,
     NEXT_PUBLIC_MAPTILER_KEY: process.env.NEXT_PUBLIC_MAPTILER_KEY,
+    NEXT_PUBLIC_DEMO_MODE: process.env.NEXT_PUBLIC_DEMO_MODE,
   },
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
   emptyStringAsUndefined: true,
