@@ -33,6 +33,7 @@ export const INTAKE_STEPS = [
     label: "Duration",
     description: "How long is the training session",
     icon: Clock,
+    optional: true,
     patterns: [/\bhour\b/i, /\bminute\b/i, /\blong\b/i, /\bduration\b/i, /\btime\b/i, /\b\d+h\b/i],
   },
   {
@@ -40,6 +41,7 @@ export const INTAKE_STEPS = [
     label: "Learning objective",
     description: "The primary outcome participants achieve",
     icon: Target,
+    optional: true,
     patterns: [/\bobjective\b/i, /\bgoal\b/i, /\boutcome\b/i, /\blearn\b/i, /\bable to\b/i],
   },
 ] as const;

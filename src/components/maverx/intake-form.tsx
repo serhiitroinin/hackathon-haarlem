@@ -8,6 +8,13 @@ import type { IntakeFormData, IntakeStepId } from "~/components/maverx/types";
 import { INTAKE_STEPS } from "~/components/maverx/constants";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
 
@@ -25,13 +32,21 @@ const INITIAL_FIELDS: FieldValues = {
   objective: "",
 };
 
+const LEVEL_OPTIONS = [
+  { value: "beginner", label: "Beginner" },
+  { value: "intermediate", label: "Intermediate" },
+  { value: "advanced", label: "Advanced" },
+];
+
+const REQUIRED_FIELDS: IntakeStepId[] = ["topic", "audience", "level"];
+
 export function IntakeForm({ onComplete }: IntakeFormProps) {
   const [fields, setFields] = useState<FieldValues>(INITIAL_FIELDS);
   const [files, setFiles] = useState<File[]>([]);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const canSubmit = INTAKE_STEPS.every((s) => fields[s.id].trim().length > 0);
+  const canSubmit = REQUIRED_FIELDS.every((id) => fields[id].trim().length > 0);
 
   function updateField(id: IntakeStepId, value: string) {
     setFields((prev) => ({ ...prev, [id]: value }));
@@ -72,7 +87,14 @@ export function IntakeForm({ onComplete }: IntakeFormProps) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
-    onComplete({ ...fields, files });
+    onComplete({
+      topic: fields.topic,
+      audience: fields.audience,
+      level: fields.level,
+      duration: fields.duration || undefined,
+      objective: fields.objective || undefined,
+      files,
+    });
   }
 
   return (
@@ -91,27 +113,46 @@ export function IntakeForm({ onComplete }: IntakeFormProps) {
           <div>
             <h1 className="text-lg font-semibold">Set up your training</h1>
             <p className="text-muted-foreground text-sm">
-              Fill in the five fields and I&apos;ll build your complete deck.
+              Fill in the details and I&apos;ll build your complete deck.
             </p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          {/* The 5 intake fields */}
           {INTAKE_STEPS.map((step) => {
             const Icon = step.icon;
             const value = fields[step.id];
+            const isOptional = "optional" in step && step.optional;
             const isObjective = step.id === "objective";
+            const isLevel = step.id === "level";
 
             return (
               <div key={step.id} className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-1.5 text-sm font-medium">
                   <Icon className="text-primary/70 h-3.5 w-3.5" />
                   {step.label}
-                  <span className="text-destructive ml-0.5">*</span>
+                  {isOptional ? (
+                    <span className="text-muted-foreground font-normal">(optional)</span>
+                  ) : (
+                    <span className="text-destructive ml-0.5">*</span>
+                  )}
                 </label>
                 <p className="text-muted-foreground -mt-0.5 text-xs">{step.description}</p>
-                {isObjective ? (
+
+                {isLevel ? (
+                  <Select value={value} onValueChange={(v) => updateField(step.id, v)}>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue placeholder="Select knowledge level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LEVEL_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : isObjective ? (
                   <Textarea
                     value={value}
                     onChange={(e) => updateField(step.id, e.target.value)}
@@ -205,7 +246,7 @@ export function IntakeForm({ onComplete }: IntakeFormProps) {
             className="mt-2 w-full"
             size="lg"
           >
-            Start Building →
+            Next →
           </Button>
         </form>
       </motion.div>

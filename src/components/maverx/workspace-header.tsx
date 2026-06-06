@@ -1,17 +1,21 @@
 "use client";
 
-import { Check, GraduationCap, MessageSquare } from "lucide-react";
+import { Check, GraduationCap } from "lucide-react";
 import Image from "next/image";
 
 import { cn } from "~/lib/utils";
 
 export interface WorkspaceHeaderProps {
-  activeTab: "intake" | "chat";
-  onTabChange: (tab: "intake" | "chat") => void;
-  chatEnabled: boolean;
+  step: 1 | 2 | 3;
 }
 
-export function WorkspaceHeader({ activeTab, onTabChange, chatEnabled }: WorkspaceHeaderProps) {
+const STEPS = [
+  { number: 1, label: "Training Details" },
+  { number: 2, label: "Refine" },
+  { number: 3, label: "Your Slides" },
+] as const;
+
+export function WorkspaceHeader({ step }: WorkspaceHeaderProps) {
   return (
     <header className="border-b bg-card px-6 py-3">
       <div className="flex items-center justify-between">
@@ -31,42 +35,50 @@ export function WorkspaceHeader({ activeTab, onTabChange, chatEnabled }: Workspa
 
           <div className="bg-border h-5 w-px" />
 
-          {/* Tab navigation */}
+          {/* Step indicator */}
           <nav className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => onTabChange("intake")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                activeTab === "intake"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted",
-              )}
-            >
-              {chatEnabled ? (
-                <Check className="h-3 w-3 text-emerald-500" />
-              ) : (
-                <span className="text-primary/60 font-bold">1</span>
-              )}
-              Intake
-            </button>
+            {STEPS.map((s, i) => {
+              const done = step > s.number;
+              const active = step === s.number;
+              return (
+                <div key={s.number} className="flex items-center gap-1">
+                  <div
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium",
+                      active
+                        ? "bg-primary/10 text-primary"
+                        : done
+                          ? "text-emerald-600"
+                          : "text-muted-foreground/50",
+                    )}
+                  >
+                    {done ? (
+                      <Check className="h-3 w-3 text-emerald-500" />
+                    ) : (
+                      <span
+                        className={cn(
+                          "flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold",
+                          active ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20",
+                        )}
+                      >
+                        {s.number}
+                      </span>
+                    )}
+                    {s.label}
+                  </div>
 
-            <button
-              type="button"
-              onClick={() => chatEnabled && onTabChange("chat")}
-              disabled={!chatEnabled}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                activeTab === "chat"
-                  ? "bg-primary/10 text-primary"
-                  : chatEnabled
-                    ? "text-muted-foreground hover:text-foreground hover:bg-muted"
-                    : "cursor-not-allowed text-muted-foreground/40",
-              )}
-            >
-              <MessageSquare className={cn("h-3 w-3", !chatEnabled && "opacity-40")} />
-              Chat
-            </button>
+                  {/* Connector line */}
+                  {i < STEPS.length - 1 && (
+                    <div
+                      className={cn(
+                        "h-px w-6 rounded-full transition-colors",
+                        step > s.number ? "bg-emerald-400" : "bg-border",
+                      )}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </nav>
         </div>
 

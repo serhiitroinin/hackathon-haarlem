@@ -13,7 +13,7 @@ export interface IntakeFormData {
   topic: string;
   audience: string;
   level: string;
-  duration: string;
-  objective: string;
+  duration?: string;
+  objective?: string;
   files: File[];
 }

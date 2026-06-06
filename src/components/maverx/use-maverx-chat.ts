@@ -39,13 +39,16 @@ export function useMaverxChat(intakeData: IntakeFormData): MaverxChatState {
     const fileContext =
       files.length > 0 ? `\nReference documents: ${files.map((f) => f.name).join(", ")}` : "";
 
+    const lines = [
+      `- Topic: ${topic}`,
+      `- Audience: ${audience}`,
+      `- Knowledge level: ${level}`,
+      ...(duration ? [`- Duration: ${duration}`] : []),
+      ...(objective ? [`- Learning objective: ${objective}`] : []),
+    ];
     const text =
       `Please create a training with the following details:\n` +
-      `- Topic: ${topic}\n` +
-      `- Audience: ${audience}\n` +
-      `- Knowledge level: ${level}\n` +
-      `- Duration: ${duration}\n` +
-      `- Learning objective: ${objective}` +
+      lines.join("\n") +
       fileContext;
 
     void sendMessage({ text });
