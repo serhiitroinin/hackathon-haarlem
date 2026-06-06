@@ -1,0 +1,35 @@
+# fly.toml — Fly.io config for the Haarlem hackathon app.
+# `app` must be globally unique; `fly launch` will offer to rename if taken.
+# Region "ams" (Amsterdam) is closest to Haarlem. Full runbook: DEPLOY.md.
+
+app = "hackathon-haarlem"
+primary_region = "ams"
+
+[build]
+  # Uses ./Dockerfile.
+
+[deploy]
+  # Runs once before each release, after the image is built, with DATABASE_URL
+  # (from `fly postgres attach`) and secrets injected. `db push` syncs the
+  # schema without needing migration files — matches the local dev workflow.
+  release_command = "pnpm db:push"
+
+[env]
+  # Non-secret config. Swap the model live with `fly secrets set` or by editing
+  # here + redeploying. The API key itself is a secret (see DEPLOY.md), not here.
+  AI_PROVIDER = "anthropic"
+  AI_MODEL = "claude-sonnet-4-6"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  # Scale to zero when idle to save money; cold start is a couple seconds.
+  # Note: SQLite-on-volume would force min = 1; Postgres lets us go to zero.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"

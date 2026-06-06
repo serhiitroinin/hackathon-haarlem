@@ -1,6 +1,6 @@
 // Prisma schema. Docs: https://pris.ly/d/prisma-schema
-// SQLite for zero-infra local dev. To deploy on Vercel, switch `provider` to
-// "postgresql" and point DATABASE_URL at a Neon/Supabase connection string.
+// Postgres everywhere: Fly Postgres in prod, local Postgres via docker-compose
+// for dev (see docker-compose.yml and DEPLOY.md). DATABASE_URL is the only knob.
 
 generator client {
     provider = "prisma-client-js"
@@ -8,7 +8,7 @@ generator client {
 }
 
 datasource db {
-    provider = "sqlite"
+    provider = "postgresql"
     url      = env("DATABASE_URL")
 }
 

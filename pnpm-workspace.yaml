@@ -1,7 +1,13 @@
-onlyBuiltDependencies:
-  - '@prisma/client'
-  - '@prisma/engines'
-  - prisma
-  - sharp
-  - unrs-resolver
-  - esbuild
+# pnpm 11 settings file. pnpm defaults `strictDepBuilds: true`, so any dependency
+# with a build/postinstall script must be explicitly allowed or `pnpm install`
+# aborts (ERR_PNPM_IGNORED_BUILDS). v11 uses the `allowBuilds` map; the old
+# `onlyBuiltDependencies` list is ignored by v11.
+# Prisma's query engine and sharp's native binaries are required at runtime;
+# esbuild/unrs-resolver back the tooling.
+allowBuilds:
+  "@prisma/client": true
+  "@prisma/engines": true
+  prisma: true
+  sharp: true
+  unrs-resolver: true
+  esbuild: true

@@ -1,0 +1,22 @@
+# Keep the build context small and avoid leaking secrets / stale artifacts.
+node_modules
+.next
+out
+build
+generated
+.git
+.gitignore
+.env
+.env*.local
+*.sqlite
+*.sqlite-journal
+prisma/db.sqlite*
+.DS_Store
+npm-debug.log*
+.pnpm-debug.log*
+README.md
+DEPLOY.md
+docker-compose.yml
+.vscode
+.idea
+coverage
