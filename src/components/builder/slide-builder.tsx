@@ -3,9 +3,12 @@
 import {
   AlertTriangle,
   Check,
+  Filter,
   Info,
+  Plus,
   Presentation,
   RotateCcw,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -13,7 +16,6 @@ import { useEffect, useRef, useState } from "react";
 import { ThemeToggle } from "~/components/theme-toggle";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Textarea } from "~/components/ui/textarea";
@@ -22,12 +24,24 @@ import { cn } from "~/lib/utils";
 import { analyzeSlide, slideStatus, type Issue } from "./attention";
 import { SAMPLE_DECK } from "./sample-deck";
 import { SlideCanvas } from "./slide-canvas";
-import { ACCENTS, type AccentKey } from "./tokens";
-import { EMPTY_NOTES, type Deck, type Slide, type SpeakerNotes } from "./types";
+import {
+  ACCENTS,
+  BG_OPTIONS,
+  COLOR_OPTIONS,
+  SIZE_SCALE_PT,
+  WEIGHT_OPTIONS,
+  type AccentKey,
+} from "./tokens";
+import {
+  EMPTY_NOTES,
+  type Deck,
+  type ElementStyle,
+  type Slide,
+  type SpeakerNotes,
+} from "./types";
 
 const STORAGE_KEY = "mvx-deck-v1";
 
-/** Measure a container's pixel width (so SlideCanvas can scale to fit). */
 function useWidth<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   const [width, setWidth] = useState(880);
@@ -44,51 +58,106 @@ function useWidth<T extends HTMLElement>() {
 }
 
 function StatusDot({ status }: { status: "warn" | "info" | null }) {
-  if (status === "warn")
-    return <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />;
+  if (status === "warn") return <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />;
   if (status === "info") return <Info className="h-3.5 w-3.5 text-sky-500" />;
   return <Check className="h-3.5 w-3.5 text-emerald-500" />;
+}
+
+/** Human label for a selected element id. */
+function elementLabel(id: string): string {
+  if (id === "title") return "Title";
+  if (id === "eyebrow") return "Eyebrow";
+  if (id === "subtitle") return "Subtitle";
+  const [kind, i, field] = id.split(":");
+  if (kind === "bullet") return `Bullet ${Number(i) + 1}`;
+  if (kind === "agenda") return `Agenda ${Number(i) + 1} · ${field}`;
+  if (kind === "row") return `Row ${Number(i) + 1} · ${field}`;
+  return "Element";
 }
 
 export function SlideBuilder() {
   const [deck, setDeck] = useState<Deck>(SAMPLE_DECK);
   const [active, setActive] = useState(0);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [onlyFlagged, setOnlyFlagged] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [previewRef, previewWidth] = useWidth<HTMLDivElement>();
 
-  // Load any saved deck after mount (avoids SSR/client mismatch).
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setDeck(JSON.parse(raw) as Deck);
     } catch {
-      /* ignore corrupt storage */
+      /* ignore */
     }
     setHydrated(true);
   }, []);
-
-  // Persist on change (once hydrated, so we don't clobber storage on first paint).
   useEffect(() => {
     if (hydrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(deck));
   }, [deck, hydrated]);
 
   const slide = deck.slides[active];
 
-  function patchSlide(patch: Partial<Slide>) {
+  function updateActive(fn: (s: Slide) => Slide) {
     setDeck((d) => ({
       ...d,
-      slides: d.slides.map((s, i) => (i === active ? { ...s, ...patch } : s)),
+      slides: d.slides.map((s, i) => (i === active ? fn(s) : s)),
     }));
   }
-  function patchNotes(patch: Partial<SpeakerNotes>) {
-    patchSlide({ notes: { ...(slide?.notes ?? EMPTY_NOTES), ...patch } });
+
+  function handleEditText(id: string, text: string) {
+    updateActive((s) => {
+      if (id === "title") return { ...s, title: text };
+      if (id === "eyebrow") return { ...s, eyebrow: text };
+      if (id === "subtitle") return { ...s, subtitle: text };
+      const [kind, idx, field] = id.split(":");
+      const i = Number(idx);
+      if (kind === "bullet") {
+        const bullets = [...(s.bullets ?? [])];
+        bullets[i] = text;
+        return { ...s, bullets };
+      }
+      if (kind === "agenda") {
+        const agenda = [...(s.agenda ?? [])];
+        const item = { ...agenda[i]! };
+        if (field === "label") item.label = text;
+        else item.desc = text;
+        agenda[i] = item;
+        return { ...s, agenda };
+      }
+      if (kind === "row") {
+        const rows = [...(s.rows ?? [])];
+        const row = { ...rows[i]! };
+        if (field === "time") row.time = text;
+        else if (field === "module") row.module = text;
+        else row.activities = text;
+        rows[i] = row;
+        return { ...s, rows };
+      }
+      return s;
+    });
   }
 
-  const attentionCount = deck.slides.filter(
-    (s) => slideStatus(s) === "warn",
-  ).length;
+  function setOverride(id: string, patch: Partial<ElementStyle>) {
+    updateActive((s) => {
+      const overrides = { ...(s.overrides ?? {}) };
+      const cur: ElementStyle = { ...(overrides[id] ?? {}), ...patch };
+      (Object.keys(cur) as (keyof ElementStyle)[]).forEach((k) => {
+        if (cur[k] === undefined) delete cur[k];
+      });
+      if (Object.keys(cur).length) overrides[id] = cur;
+      else delete overrides[id];
+      return { ...s, overrides };
+    });
+  }
 
+  function patchNotes(patch: Partial<SpeakerNotes>) {
+    updateActive((s) => ({ ...s, notes: { ...(s.notes ?? EMPTY_NOTES), ...patch } }));
+  }
+
+  const attentionCount = deck.slides.filter((s) => slideStatus(s) === "warn").length;
   const issues: Issue[] = slide ? analyzeSlide(slide) : [];
+  const sel = selected ? slide?.overrides?.[selected] : undefined;
 
   return (
     <div className="flex h-screen flex-col">
@@ -109,11 +178,11 @@ export function SlideBuilder() {
           {attentionCount > 0 ? (
             <span className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-500">
               <AlertTriangle className="h-3.5 w-3.5" />
-              {attentionCount} slide{attentionCount > 1 ? "s" : ""} need attention
+              {attentionCount} need attention
             </span>
           ) : (
             <span className="flex items-center gap-1.5 text-xs text-emerald-600">
-              <Check className="h-3.5 w-3.5" /> All slides on-brand
+              <Check className="h-3.5 w-3.5" /> All on-brand
             </span>
           )}
           <Button
@@ -123,6 +192,7 @@ export function SlideBuilder() {
             onClick={() => {
               setDeck(SAMPLE_DECK);
               setActive(0);
+              setSelected(null);
             }}
           >
             <RotateCcw className="h-3.5 w-3.5" /> Reset
@@ -138,42 +208,75 @@ export function SlideBuilder() {
 
       <div className="flex min-h-0 flex-1">
         {/* Thumbnail rail */}
-        <ScrollArea className="bg-muted/30 w-56 shrink-0 border-r">
-          <div className="space-y-2 p-3">
-            {deck.slides.map((s, i) => {
-              const status = slideStatus(s);
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => setActive(i)}
-                  className={cn(
-                    "block w-full rounded-lg border p-1 text-left transition-all",
-                    i === active
-                      ? "border-primary ring-primary/30 ring-2"
-                      : "border-transparent hover:border-muted-foreground/30",
-                  )}
-                >
-                  <SlideCanvas slide={s} width={190} />
-                  <div className="flex items-center justify-between px-1 py-1">
-                    <span className="text-muted-foreground text-[10px]">
-                      {i + 1}. {s.kind}
-                    </span>
-                    <StatusDot status={status} />
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </ScrollArea>
+        <div className="bg-muted/30 flex w-56 shrink-0 flex-col border-r">
+          <button
+            onClick={() => setOnlyFlagged((v) => !v)}
+            className={cn(
+              "flex items-center gap-1.5 border-b px-3 py-2 text-xs transition-colors",
+              onlyFlagged ? "bg-amber-500/10 text-amber-600" : "text-muted-foreground hover:bg-accent/50",
+            )}
+          >
+            <Filter className="h-3.5 w-3.5" />
+            {onlyFlagged ? "Showing flagged only" : "Filter: needs attention"}
+          </button>
+          <ScrollArea className="flex-1">
+            <div className="space-y-2 p-3">
+              {deck.slides.map((s, i) => {
+                const status = slideStatus(s);
+                if (onlyFlagged && status !== "warn") return null;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setActive(i);
+                      setSelected(null);
+                    }}
+                    className={cn(
+                      "block w-full rounded-lg border p-1 text-left transition-all",
+                      i === active
+                        ? "border-primary ring-primary/30 ring-2"
+                        : "border-transparent hover:border-muted-foreground/30",
+                    )}
+                  >
+                    <SlideCanvas slide={s} width={190} />
+                    <div className="flex items-center justify-between px-1 py-1">
+                      <span className="text-muted-foreground text-[10px]">
+                        {i + 1}. {s.kind}
+                      </span>
+                      <StatusDot status={status} />
+                    </div>
+                  </button>
+                );
+              })}
+              {onlyFlagged && attentionCount === 0 && (
+                <p className="text-muted-foreground px-2 py-6 text-center text-xs">
+                  Nothing needs attention 🎉
+                </p>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
 
-        {/* Preview */}
-        <div className="flex min-w-0 flex-1 flex-col items-center justify-start overflow-auto p-6">
+        {/* Preview (inline editable) */}
+        <div className="flex min-w-0 flex-1 flex-col items-center overflow-auto p-6">
           <div ref={previewRef} className="w-full max-w-4xl">
-            {slide && <SlideCanvas slide={slide} width={previewWidth} />}
+            {slide && (
+              <SlideCanvas
+                key={slide.id}
+                slide={slide}
+                width={previewWidth}
+                editable
+                selectedId={selected}
+                onSelect={setSelected}
+                onEditText={handleEditText}
+              />
+            )}
           </div>
+          <p className="text-muted-foreground mt-2 w-full max-w-4xl text-xs">
+            Click any text to edit it inline. Select an element to restyle it on the right.
+          </p>
 
-          {/* Attention for this slide */}
-          <div className="mt-4 w-full max-w-4xl">
+          <div className="mt-3 w-full max-w-4xl">
             {issues.length === 0 ? (
               <p className="flex items-center gap-2 text-sm text-emerald-600">
                 <Check className="h-4 w-4" /> This slide follows the style guide.
@@ -203,80 +306,166 @@ export function SlideBuilder() {
           </div>
         </div>
 
-        {/* Editor panel */}
+        {/* Dynamic inspector */}
         <ScrollArea className="w-80 shrink-0 border-l">
           {slide && (
             <div className="space-y-4 p-4">
-              <div>
-                <Label className="text-xs">Eyebrow</Label>
-                <Input
-                  value={slide.eyebrow ?? ""}
-                  onChange={(e) => patchSlide({ eyebrow: e.target.value })}
-                  placeholder="e.g. Topic 1 · Theory"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label className="text-xs">Title</Label>
-                <Textarea
-                  value={slide.title}
-                  onChange={(e) => patchSlide({ title: e.target.value })}
-                  rows={2}
-                  className="mt-1"
-                />
-              </div>
-              {(slide.kind === "cover" || slide.kind === "section") && (
-                <div>
-                  <Label className="text-xs">Subtitle</Label>
-                  <Input
-                    value={slide.subtitle ?? ""}
-                    onChange={(e) => patchSlide({ subtitle: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-              )}
-
-              {/* Accent picker */}
-              <div>
-                <Label className="text-xs">Accent</Label>
-                <div className="mt-1.5 flex gap-2">
-                  {(Object.keys(ACCENTS) as AccentKey[]).map((key) => (
+              {/* Element inspector (shown when something is selected) */}
+              {selected ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold tracking-wide uppercase">
+                      {elementLabel(selected)}
+                    </p>
                     <button
-                      key={key}
-                      onClick={() => patchSlide({ accent: key })}
-                      aria-label={key}
-                      className={cn(
-                        "h-7 w-7 rounded-full ring-offset-2 transition",
-                        slide.accent === key && "ring-foreground ring-2",
-                      )}
-                      style={{ background: ACCENTS[key] }}
-                    />
-                  ))}
-                </div>
-              </div>
+                      onClick={() => setOverride(selected, { colorKey: undefined, sizePt: undefined, weight: undefined })}
+                      className="text-muted-foreground hover:text-foreground text-[11px]"
+                    >
+                      Reset style
+                    </button>
+                  </div>
 
-              {/* Bullets (content-style slides) */}
-              {slide.bullets && (
-                <div>
-                  <Label className="text-xs">
-                    Body — one bullet per line, <code>**word**</code> = accent
-                  </Label>
-                  <Textarea
-                    value={slide.bullets.join("\n")}
-                    onChange={(e) =>
-                      patchSlide({
-                        bullets: e.target.value.split("\n").filter((l) => l.length),
-                      })
-                    }
-                    rows={6}
-                    className="mt-1 font-mono text-xs"
-                  />
+                  <div>
+                    <Label className="text-muted-foreground text-[11px]">Colour</Label>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {COLOR_OPTIONS.map((c) => (
+                        <button
+                          key={c.key}
+                          title={c.label}
+                          onClick={() => setOverride(selected, { colorKey: c.key })}
+                          className={cn(
+                            "h-7 w-7 rounded-md border ring-offset-1 transition",
+                            sel?.colorKey === c.key && "ring-foreground ring-2",
+                          )}
+                          style={{ background: c.hex }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-muted-foreground text-[11px]">Size (pt)</Label>
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {SIZE_SCALE_PT.map((pt) => (
+                        <button
+                          key={pt}
+                          onClick={() => setOverride(selected, { sizePt: pt })}
+                          className={cn(
+                            "rounded border px-2 py-1 text-[11px] transition",
+                            sel?.sizePt === pt
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "hover:bg-accent",
+                          )}
+                        >
+                          {pt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-muted-foreground text-[11px]">Weight</Label>
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {WEIGHT_OPTIONS.map((w) => (
+                        <button
+                          key={w.value}
+                          onClick={() => setOverride(selected, { weight: w.value })}
+                          className={cn(
+                            "rounded border px-2 py-1 text-[11px] transition",
+                            sel?.weight === w.value
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "hover:bg-accent",
+                          )}
+                        >
+                          {w.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {selected.startsWith("bullet:") && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive gap-1.5 text-xs"
+                      onClick={() => {
+                        const i = Number(selected.split(":")[1]);
+                        updateActive((s) => ({
+                          ...s,
+                          bullets: (s.bullets ?? []).filter((_, j) => j !== i),
+                        }));
+                        setSelected(null);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete bullet
+                    </Button>
+                  )}
                 </div>
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  Select an element on the slide to restyle it with brand colours,
+                  sizes and weights.
+                </p>
               )}
+
+              {/* Slide-level controls */}
+              <div className="space-y-3 border-t pt-3">
+                <p className="text-xs font-semibold tracking-wide uppercase">Slide</p>
+                <div>
+                  <Label className="text-muted-foreground text-[11px]">Accent</Label>
+                  <div className="mt-1.5 flex gap-2">
+                    {(Object.keys(ACCENTS) as AccentKey[]).map((key) => (
+                      <button
+                        key={key}
+                        onClick={() => updateActive((s) => ({ ...s, accent: key }))}
+                        aria-label={key}
+                        className={cn(
+                          "h-7 w-7 rounded-full ring-offset-2 transition",
+                          slide.accent === key && "ring-foreground ring-2",
+                        )}
+                        style={{ background: ACCENTS[key] }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {slide.kind !== "cover" && slide.kind !== "section" && (
+                  <div>
+                    <Label className="text-muted-foreground text-[11px]">Background</Label>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {BG_OPTIONS.map((c) => (
+                        <button
+                          key={c.key}
+                          title={c.label}
+                          onClick={() => updateActive((s) => ({ ...s, background: c.key }))}
+                          className={cn(
+                            "h-7 w-7 rounded-md border ring-offset-1 transition",
+                            slide.background === c.key && "ring-foreground ring-2",
+                          )}
+                          style={{ background: c.hex }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {slide.bullets && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    onClick={() =>
+                      updateActive((s) => ({ ...s, bullets: [...(s.bullets ?? []), "New point"] }))
+                    }
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Add bullet
+                  </Button>
+                )}
+              </div>
 
               {/* Speaker notes */}
               <div className="border-t pt-3">
-                <p className="mb-2 text-xs font-medium tracking-wide uppercase">
+                <p className="mb-2 text-xs font-semibold tracking-wide uppercase">
                   Speaker notes
                 </p>
                 {(
@@ -294,9 +483,7 @@ export function SlideBuilder() {
                     <div key={key} className="mb-2">
                       <Label className="text-muted-foreground text-[11px]">
                         {label}
-                        {!val.trim() && (
-                          <span className="text-amber-500"> · missing</span>
-                        )}
+                        {!val.trim() && <span className="text-amber-500"> · missing</span>}
                       </Label>
                       <Textarea
                         value={val}

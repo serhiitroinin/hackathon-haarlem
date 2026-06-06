@@ -34,3 +34,44 @@ export type AccentKey = keyof typeof ACCENTS;
 
 export const FONT_HEADING = "var(--font-space-grotesk), 'Space Grotesk', sans-serif";
 export const FONT_BODY = "var(--font-raleway), 'Raleway', sans-serif";
+
+/* ---- Inspector constraints — the ONLY values a user may pick ------------- */
+
+/** Brand colours selectable for text/elements (palette + accents), with labels. */
+export const COLOR_OPTIONS: { key: string; label: string; hex: string }[] = [
+  { key: "primary", label: "Primary Dark", hex: MVX.primary },
+  { key: "deepPurple", label: "Deep Purple", hex: MVX.deepPurple },
+  { key: "roseRed", label: "Rose Red", hex: MVX.roseRed },
+  { key: "orange", label: "Orange", hex: MVX.orange },
+  { key: "teal", label: "Teal", hex: MVX.teal },
+  { key: "grey", label: "Dark Grey", hex: MVX.grey },
+  { key: "white", label: "White", hex: MVX.white },
+];
+
+/** Background colours selectable for light slides (style guide backgrounds). */
+export const BG_OPTIONS: { key: string; label: string; hex: string }[] = [
+  { key: "white", label: "White", hex: MVX.white },
+  { key: "offWhite", label: "Off-White", hex: MVX.offWhite },
+  { key: "bgLavender", label: "BG Lavender", hex: MVX.bgLavender },
+  { key: "bgRose", label: "Rose Tint", hex: MVX.bgRose },
+  { key: "bgOrange", label: "Orange Tint", hex: MVX.bgOrange },
+];
+
+export function colorHex(key?: string): string | undefined {
+  return COLOR_OPTIONS.find((c) => c.key === key)?.hex;
+}
+export function bgHex(key?: string): string | undefined {
+  return BG_OPTIONS.find((c) => c.key === key)?.hex;
+}
+
+/** Slides are designed at 96 dpi: 1pt = 4/3 px. The type scale (in pt) the guide
+ * documents — these are the only sizes the inspector offers. */
+export const PT_TO_PX = 4 / 3;
+export const SIZE_SCALE_PT = [15, 18, 20, 22, 24, 26, 28, 33, 40, 44, 54, 72];
+
+export const WEIGHT_OPTIONS: { value: 400 | 500 | 600 | 700; label: string }[] = [
+  { value: 400, label: "Regular" },
+  { value: 500, label: "Medium" },
+  { value: 600, label: "Semibold" },
+  { value: 700, label: "Bold" },
+];

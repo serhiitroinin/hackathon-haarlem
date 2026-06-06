@@ -27,6 +27,22 @@ export type SpeakerNotes = {
 export type AgendaItem = { label: string; desc?: string };
 export type TimetableRow = { time: string; module: string; activities: string };
 
+/** Per-element brand-constrained style override. All optional; keys reference
+ * COLOR_OPTIONS / SIZE_SCALE_PT / WEIGHT_OPTIONS in tokens.ts. */
+export type ElementStyle = {
+  colorKey?: string;
+  sizePt?: number;
+  weight?: 400 | 500 | 600 | 700;
+};
+
+/** Stable ids for selectable elements on a slide. */
+export const ELEMENT_IDS = {
+  eyebrow: "eyebrow",
+  title: "title",
+  subtitle: "subtitle",
+  bullet: (i: number) => `bullet:${i}`,
+} as const;
+
 export type Slide = {
   id: string;
   kind: SlideKind;
@@ -43,6 +59,10 @@ export type Slide = {
   /** For timetable slides. */
   rows?: TimetableRow[];
   notes?: SpeakerNotes;
+  /** Per-element style overrides, keyed by element id (see ELEMENT_IDS). */
+  overrides?: Record<string, ElementStyle>;
+  /** Optional background colour key (light slides) — see BG_OPTIONS. */
+  background?: string;
 };
 
 export type Deck = { title: string; slides: Slide[] };

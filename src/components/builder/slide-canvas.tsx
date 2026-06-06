@@ -1,31 +1,131 @@
-import { type CSSProperties } from "react";
+"use client";
 
-import { ACCENTS, FONT_BODY, FONT_HEADING, MVX } from "./tokens";
-import { type Slide } from "./types";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  type CSSProperties,
+} from "react";
+
+import {
+  ACCENTS,
+  bgHex,
+  colorHex,
+  FONT_BODY,
+  FONT_HEADING,
+  MVX,
+  PT_TO_PX,
+} from "./tokens";
+import { type ElementStyle, type Slide } from "./types";
 
 const BASE_W = 1280;
 const BASE_H = 720;
 const MARGIN = 72; // safe-area margin (style guide slide 7)
+const SELECT_RING = "#2563eb";
 
-/** Render `**word**` runs in the slide's accent colour + semibold. */
-function Emphasis({ text, color }: { text: string; color: string }) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return (
-    <>
-      {parts.map((p, i) =>
-        p.startsWith("**") && p.endsWith("**") ? (
-          <span key={i} style={{ color, fontWeight: 600 }}>
-            {p.slice(2, -2)}
-          </span>
-        ) : (
-          <span key={i}>{p}</span>
-        ),
-      )}
-    </>
+/* ---- editing context ----------------------------------------------------- */
+
+type EditCtx = {
+  editable: boolean;
+  selectedId: string | null;
+  overrides: Record<string, ElementStyle>;
+  onSelect?: (id: string | null) => void;
+  onEditText?: (id: string, text: string) => void;
+};
+const SlideEditContext = createContext<EditCtx>({
+  editable: false,
+  selectedId: null,
+  overrides: {},
+});
+
+/** Apply a per-element override on top of a base style. */
+function withOverride(base: CSSProperties, ov?: ElementStyle): CSSProperties {
+  if (!ov) return base;
+  return {
+    ...base,
+    ...(ov.colorKey ? { color: colorHex(ov.colorKey) } : {}),
+    ...(ov.sizePt ? { fontSize: ov.sizePt * PT_TO_PX } : {}),
+    ...(ov.weight ? { fontWeight: ov.weight } : {}),
+  };
+}
+
+/** Render `**word**` runs in `accent`. Used in static (non-edit) mode only. */
+function emphasize(text: string, accent: string) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((p, i) =>
+    p.startsWith("**") && p.endsWith("**") ? (
+      <span key={i} style={{ color: accent, fontWeight: 600 }}>
+        {p.slice(2, -2)}
+      </span>
+    ) : (
+      <span key={i}>{p}</span>
+    ),
   );
 }
 
-/** The lowercase "maverx" wordmark, drawn as styled text. */
+/**
+ * A text element that is static when rendering thumbnails/exports, and a
+ * selectable contentEditable region in the builder. Edits commit on blur; the
+ * DOM text is kept in sync via a ref so React re-renders (e.g. a colour change)
+ * never move the caret.
+ */
+function SlideText({
+  id,
+  style,
+  text,
+  accent,
+  emphasis,
+}: {
+  id: string;
+  style: CSSProperties;
+  text: string;
+  accent: string;
+  /** Render **word** emphasis in static mode. */
+  emphasis?: boolean;
+}) {
+  const ctx = useContext(SlideEditContext);
+  const ref = useRef<HTMLDivElement>(null);
+  const finalStyle = withOverride(style, ctx.overrides[id]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (document.activeElement !== el && el.innerText !== text)
+      el.innerText = text ?? "";
+  }, [text]);
+
+  if (!ctx.editable) {
+    return (
+      <div style={finalStyle}>
+        {emphasis ? emphasize(text, accent) : text}
+      </div>
+    );
+  }
+
+  const selected = ctx.selectedId === id;
+  return (
+    <div
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      suppressHydrationWarning
+      spellCheck={false}
+      style={{
+        ...finalStyle,
+        outline: selected ? `2px solid ${SELECT_RING}` : "none",
+        outlineOffset: 6,
+        borderRadius: 3,
+        cursor: "text",
+      }}
+      onMouseDown={(e) => e.stopPropagation()}
+      onFocus={() => ctx.onSelect?.(id)}
+      onBlur={(e) => ctx.onEditText?.(id, e.currentTarget.innerText)}
+    />
+  );
+}
+
+/* ---- decorative bits ----------------------------------------------------- */
+
 function Wordmark({ color }: { color: string }) {
   return (
     <span
@@ -42,7 +142,6 @@ function Wordmark({ color }: { color: string }) {
   );
 }
 
-/** Subtle geometric pattern echoing the cover slide's background texture. */
 function PatternBackdrop({ color }: { color: string }) {
   return (
     <svg
@@ -61,6 +160,8 @@ function PatternBackdrop({ color }: { color: string }) {
   );
 }
 
+/* ---- slide layouts ------------------------------------------------------- */
+
 function CoverSlide({ slide }: { slide: Slide }) {
   const accent = ACCENTS[slide.accent];
   return (
@@ -76,46 +177,34 @@ function CoverSlide({ slide }: { slide: Slide }) {
       <div style={{ position: "absolute", top: MARGIN, left: MARGIN }}>
         <Wordmark color={MVX.white} />
       </div>
-      <div
-        style={{
-          position: "absolute",
-          left: MARGIN,
-          bottom: 170,
-          right: MARGIN,
-        }}
-      >
+      <div style={{ position: "absolute", left: MARGIN, bottom: 170, right: MARGIN }}>
         <div
-          style={{
-            width: 64,
-            height: 8,
-            borderRadius: 8,
-            background: accent,
-            marginBottom: 28,
-          }}
+          style={{ width: 64, height: 8, borderRadius: 8, background: accent, marginBottom: 28 }}
         />
-        <h1
+        <SlideText
+          id="title"
+          accent={accent}
+          text={slide.title}
           style={{
             fontFamily: FONT_HEADING,
             fontWeight: 700,
             fontSize: 64,
             lineHeight: 1.05,
             letterSpacing: "-0.02em",
-            margin: 0,
           }}
-        >
-          {slide.title}
-        </h1>
-        {slide.subtitle && (
-          <p
+        />
+        {slide.subtitle !== undefined && (
+          <SlideText
+            id="subtitle"
+            accent={accent}
+            text={slide.subtitle}
             style={{
               fontFamily: FONT_BODY,
               fontSize: 26,
               marginTop: 20,
               color: "rgba(255,255,255,0.78)",
             }}
-          >
-            {slide.subtitle}
-          </p>
+          />
         )}
       </div>
       <div
@@ -137,14 +226,7 @@ function CoverSlide({ slide }: { slide: Slide }) {
 function SectionSlide({ slide }: { slide: Slide }) {
   const accent = ACCENTS[slide.accent];
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        background: MVX.coverBg,
-        color: MVX.white,
-      }}
-    >
+    <div style={{ position: "absolute", inset: 0, background: MVX.coverBg, color: MVX.white }}>
       <PatternBackdrop color={accent} />
       <div style={{ position: "absolute", top: MARGIN, left: MARGIN }}>
         <Wordmark color={MVX.white} />
@@ -158,8 +240,11 @@ function SectionSlide({ slide }: { slide: Slide }) {
           justifyContent: "center",
         }}
       >
-        {slide.eyebrow && (
-          <span
+        {slide.eyebrow !== undefined && (
+          <SlideText
+            id="eyebrow"
+            accent={accent}
+            text={slide.eyebrow}
             style={{
               fontFamily: FONT_HEADING,
               fontWeight: 600,
@@ -168,34 +253,34 @@ function SectionSlide({ slide }: { slide: Slide }) {
               textTransform: "uppercase",
               color: accent,
             }}
-          >
-            {slide.eyebrow}
-          </span>
+          />
         )}
-        <h1
+        <SlideText
+          id="title"
+          accent={accent}
+          text={slide.title}
           style={{
             fontFamily: FONT_HEADING,
             fontWeight: 700,
             fontSize: 72,
             lineHeight: 1.04,
             letterSpacing: "-0.02em",
-            margin: "14px 0 0",
+            marginTop: 14,
             maxWidth: 980,
           }}
-        >
-          {slide.title}
-        </h1>
-        {slide.subtitle && (
-          <p
+        />
+        {slide.subtitle !== undefined && (
+          <SlideText
+            id="subtitle"
+            accent={accent}
+            text={slide.subtitle}
             style={{
               fontFamily: FONT_BODY,
               fontSize: 28,
               marginTop: 18,
               color: "rgba(255,255,255,0.75)",
             }}
-          >
-            {slide.subtitle}
-          </p>
+          />
         )}
       </div>
     </div>
@@ -211,22 +296,17 @@ const LIGHT_BG: Record<string, string> = {
   timetable: MVX.white,
 };
 
-/** Header shared by all light slides: eyebrow + title + accent rule + mark. */
-function LightHeader({ slide }: { slide: Slide }) {
-  const accent = ACCENTS[slide.accent];
+function LightHeader({ slide, accent }: { slide: Slide; accent: string }) {
   return (
     <>
-      <div
-        style={{
-          position: "absolute",
-          top: MARGIN - 8,
-          right: MARGIN,
-        }}
-      >
+      <div style={{ position: "absolute", top: MARGIN - 8, right: MARGIN }}>
         <Wordmark color={MVX.primary} />
       </div>
-      {slide.eyebrow && (
-        <span
+      {slide.eyebrow !== undefined && (
+        <SlideText
+          id="eyebrow"
+          accent={accent}
+          text={slide.eyebrow}
           style={{
             fontFamily: FONT_HEADING,
             fontWeight: 600,
@@ -235,11 +315,12 @@ function LightHeader({ slide }: { slide: Slide }) {
             textTransform: "uppercase",
             color: accent,
           }}
-        >
-          {slide.eyebrow}
-        </span>
+        />
       )}
-      <h2
+      <SlideText
+        id="title"
+        accent={accent}
+        text={slide.title}
         style={{
           fontFamily: FONT_HEADING,
           fontWeight: 700,
@@ -247,12 +328,10 @@ function LightHeader({ slide }: { slide: Slide }) {
           lineHeight: 1.08,
           letterSpacing: "-0.01em",
           color: MVX.primary,
-          margin: slide.eyebrow ? "8px 0 0" : 0,
+          marginTop: slide.eyebrow !== undefined ? 8 : 0,
           maxWidth: 1000,
         }}
-      >
-        {slide.title}
-      </h2>
+      />
       <div
         style={{ width: 56, height: 6, borderRadius: 6, background: accent, marginTop: 18 }}
       />
@@ -262,11 +341,11 @@ function LightHeader({ slide }: { slide: Slide }) {
 
 function ContentSlide({ slide }: { slide: Slide }) {
   const accent = ACCENTS[slide.accent];
-  const bg = LIGHT_BG[slide.kind] ?? MVX.white;
+  const bg = bgHex(slide.background) ?? LIGHT_BG[slide.kind] ?? MVX.white;
   return (
     <div style={{ position: "absolute", inset: 0, background: bg, color: MVX.grey }}>
       <div style={{ position: "absolute", inset: `${MARGIN}px ${MARGIN}px` }}>
-        <LightHeader slide={slide} />
+        <LightHeader slide={slide} accent={accent} />
         <div
           style={{
             marginTop: 36,
@@ -279,14 +358,7 @@ function ContentSlide({ slide }: { slide: Slide }) {
           {(slide.bullets ?? []).map((b, i) => (
             <div
               key={i}
-              style={{
-                display: "flex",
-                gap: 16,
-                fontFamily: FONT_BODY,
-                fontSize: 23,
-                lineHeight: 1.35,
-                color: MVX.primary,
-              }}
+              style={{ display: "flex", gap: 16, color: MVX.primary }}
             >
               <span
                 style={{
@@ -298,9 +370,19 @@ function ContentSlide({ slide }: { slide: Slide }) {
                   flexShrink: 0,
                 }}
               />
-              <span>
-                <Emphasis text={b} color={accent} />
-              </span>
+              <SlideText
+                id={`bullet:${i}`}
+                accent={accent}
+                text={b}
+                emphasis
+                style={{
+                  fontFamily: FONT_BODY,
+                  fontSize: 23,
+                  lineHeight: 1.35,
+                  color: MVX.primary,
+                  flex: 1,
+                }}
+              />
             </div>
           ))}
         </div>
@@ -314,7 +396,7 @@ function AgendaSlide({ slide }: { slide: Slide }) {
   return (
     <div style={{ position: "absolute", inset: 0, background: MVX.white, color: MVX.grey }}>
       <div style={{ position: "absolute", inset: `${MARGIN}px ${MARGIN}px` }}>
-        <LightHeader slide={slide} />
+        <LightHeader slide={slide} accent={accent} />
         <div style={{ marginTop: 36, display: "flex", flexDirection: "column", gap: 18 }}>
           {(slide.agenda ?? []).map((item, i) => (
             <div key={i} style={{ display: "flex", gap: 20, alignItems: "baseline" }}>
@@ -329,23 +411,25 @@ function AgendaSlide({ slide }: { slide: Slide }) {
               >
                 {i + 1}
               </span>
-              <span>
-                <span
-                  style={{
-                    fontFamily: FONT_HEADING,
-                    fontWeight: 600,
-                    fontSize: 26,
-                    color: MVX.primary,
-                  }}
-                >
-                  {item.label}
-                </span>
-                {item.desc && (
-                  <span style={{ fontFamily: FONT_BODY, fontSize: 20, color: MVX.grey }}>
-                    {"  —  " + item.desc}
-                  </span>
-                )}
-              </span>
+              <SlideText
+                id={`agenda:${i}:label`}
+                accent={accent}
+                text={item.label}
+                style={{
+                  fontFamily: FONT_HEADING,
+                  fontWeight: 600,
+                  fontSize: 26,
+                  color: MVX.primary,
+                }}
+              />
+              {item.desc !== undefined && (
+                <SlideText
+                  id={`agenda:${i}:desc`}
+                  accent={accent}
+                  text={item.desc}
+                  style={{ fontFamily: FONT_BODY, fontSize: 20, color: MVX.grey }}
+                />
+              )}
             </div>
           ))}
         </div>
@@ -360,7 +444,7 @@ function TimetableSlide({ slide }: { slide: Slide }) {
   return (
     <div style={{ position: "absolute", inset: 0, background: MVX.white, color: MVX.grey }}>
       <div style={{ position: "absolute", inset: `${MARGIN}px ${MARGIN}px` }}>
-        <LightHeader slide={slide} />
+        <LightHeader slide={slide} accent={accent} />
         <div style={{ marginTop: 32 }}>
           <div
             style={{
@@ -389,18 +473,32 @@ function TimetableSlide({ slide }: { slide: Slide }) {
                 gridTemplateColumns: "150px 220px 1fr",
                 padding: "14px 18px",
                 background: i % 2 ? MVX.bgLavender : MVX.offWhite,
-                fontFamily: FONT_BODY,
-                fontSize: 18,
                 alignItems: "center",
               }}
             >
-              <span style={{ fontFamily: FONT_HEADING, fontWeight: 700, color: accent }}>
-                {r.time}
-              </span>
-              <span style={{ fontFamily: FONT_HEADING, fontWeight: 600, color: MVX.primary }}>
-                {r.module}
-              </span>
-              <span style={{ color: MVX.grey, lineHeight: 1.3 }}>{r.activities}</span>
+              <SlideText
+                id={`row:${i}:time`}
+                accent={accent}
+                text={r.time}
+                style={{ fontFamily: FONT_HEADING, fontWeight: 700, fontSize: 18, color: accent }}
+              />
+              <SlideText
+                id={`row:${i}:module`}
+                accent={accent}
+                text={r.module}
+                style={{
+                  fontFamily: FONT_HEADING,
+                  fontWeight: 600,
+                  fontSize: 18,
+                  color: MVX.primary,
+                }}
+              />
+              <SlideText
+                id={`row:${i}:activities`}
+                accent={accent}
+                text={r.activities}
+                style={{ fontFamily: FONT_BODY, fontSize: 18, color: MVX.grey, lineHeight: 1.3 }}
+              />
             </div>
           ))}
         </div>
@@ -425,44 +523,58 @@ function SlideInner({ slide }: { slide: Slide }) {
 }
 
 /**
- * Renders a slide at the true 1280×720 design size and scales it to `width`, so
- * a 240px thumbnail and a full preview are pixel-identical, just scaled.
+ * Renders a slide at the true 1280×720 design size and scales it to `width`.
+ * Pass edit props to make text inline-editable + selectable (builder preview);
+ * omit them for static thumbnails/exports.
  */
 export function SlideCanvas({
   slide,
   width,
   style,
+  editable = false,
+  selectedId = null,
+  onSelect,
+  onEditText,
 }: {
   slide: Slide;
   width: number;
   style?: CSSProperties;
+  editable?: boolean;
+  selectedId?: string | null;
+  onSelect?: (id: string | null) => void;
+  onEditText?: (id: string, text: string) => void;
 }) {
   const scale = width / BASE_W;
   return (
-    <div
-      style={{
-        width,
-        height: width * (BASE_H / BASE_W),
-        overflow: "hidden",
-        borderRadius: 8 * scale + 4,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
-        position: "relative",
-        flexShrink: 0,
-        ...style,
-      }}
+    <SlideEditContext.Provider
+      value={{ editable, selectedId, overrides: slide.overrides ?? {}, onSelect, onEditText }}
     >
       <div
         style={{
-          width: BASE_W,
-          height: BASE_H,
-          transform: `scale(${scale})`,
-          transformOrigin: "top left",
-          position: "absolute",
-          inset: 0,
+          width,
+          height: width * (BASE_H / BASE_W),
+          overflow: "hidden",
+          borderRadius: 8 * scale + 4,
+          boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
+          position: "relative",
+          flexShrink: 0,
+          ...style,
         }}
       >
-        <SlideInner slide={slide} />
+        <div
+          style={{
+            width: BASE_W,
+            height: BASE_H,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+            position: "absolute",
+            inset: 0,
+          }}
+          onMouseDown={editable ? () => onSelect?.(null) : undefined}
+        >
+          <SlideInner slide={slide} />
+        </div>
       </div>
-    </div>
+    </SlideEditContext.Provider>
   );
 }
