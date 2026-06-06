@@ -142,8 +142,6 @@ export function IntakeForm({ onComplete }: IntakeFormProps) {
                     <span className="text-destructive ml-0.5">*</span>
                   )}
                 </label>
-                <p className="text-muted-foreground -mt-0.5 text-xs">{step.description}</p>
-
                 {isLevel ? (
                   <Select value={value} onValueChange={(v) => updateField(step.id, v)}>
                     <SelectTrigger className="text-sm">
@@ -184,9 +182,6 @@ export function IntakeForm({ onComplete }: IntakeFormProps) {
               Reference documents
               <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
-            <p className="text-muted-foreground -mt-0.5 text-xs">
-              Existing slides, outlines, or notes to inform the training.
-            </p>
 
             <div
               onDragOver={handleDragOver}
