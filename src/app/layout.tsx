@@ -11,7 +11,7 @@ import { TRPCReactProvider } from "~/trpc/react";
 export const metadata: Metadata = {
   title: "Hackathon Haarlem — Starter",
   description: "Next.js + tRPC + Prisma + shadcn + AI SDK ship-fast scaffold",
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
+  icons: [{ rel: "icon", url: "/maverx-mark.png" }],
 };
 
 const geist = Geist({
