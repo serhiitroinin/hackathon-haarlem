@@ -1,7 +1,7 @@
 import "~/styles/globals.css";
 
 import { type Metadata } from "next";
-import { Geist, Raleway, Space_Grotesk } from "next/font/google";
+import { Geist, Raleway, Roboto, Space_Grotesk } from "next/font/google";
 
 import { ThemeProvider } from "~/components/theme-provider";
 import { Toaster } from "~/components/ui/sonner";
@@ -30,6 +30,12 @@ const raleway = Raleway({
   weight: ["400", "500", "600", "700"],
   variable: "--font-raleway",
 });
+// Roboto — for the (fake) Google Drive picker, to nail the Google look.
+const roboto = Roboto({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--font-roboto",
+});
 
 export default function RootLayout({
   children,
@@ -37,7 +43,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geist.variable} ${spaceGrotesk.variable} ${raleway.variable}`}
+      className={`${geist.variable} ${spaceGrotesk.variable} ${raleway.variable} ${roboto.variable}`}
       suppressHydrationWarning
     >
       <body>

@@ -14,6 +14,7 @@ import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Chat } from "~/components/chat/chat";
+import { GoogleDrivePicker, GoogleG } from "~/components/google/google-drive-picker";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -45,6 +46,18 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
 
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [drivePicker, setDrivePicker] = useState(false);
+
+  const driveImport = api.drive.importToProject.useMutation({
+    onSuccess: async (res) => {
+      await Promise.all([
+        utils.source.list.invalidate({ projectId }),
+        utils.project.list.invalidate(),
+      ]);
+      toast.success(`Imported ${res.created} file${res.created === 1 ? "" : "s"} from Drive`);
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const del = api.source.delete.useMutation({
     onSuccess: () => {
@@ -188,7 +201,29 @@ export function ProjectWorkspace({ projectId }: { projectId: string }) {
                 e.target.value = "";
               }}
             />
+            <div className="mt-2 flex items-center gap-2">
+              <div className="bg-border h-px flex-1" />
+              <span className="text-muted-foreground text-[10px] uppercase">or</span>
+              <div className="bg-border h-px flex-1" />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 w-full justify-center gap-2"
+              onClick={() => setDrivePicker(true)}
+              disabled={driveImport.isPending}
+            >
+              <GoogleG size={15} /> Add from Google Drive
+            </Button>
           </div>
+
+          <GoogleDrivePicker
+            open={drivePicker}
+            onOpenChange={setDrivePicker}
+            onConfirm={(files) =>
+              driveImport.mutate({ projectId, fileIds: files.map((f) => f.id) })
+            }
+          />
 
           <ScrollArea className="min-h-0 flex-1 px-4 pb-4">
             {project.data?.context && (
