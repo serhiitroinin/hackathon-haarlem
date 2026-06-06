@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquareText } from "lucide-react";
+import { MessageSquareText, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 
@@ -8,38 +8,19 @@ import type { IntakeFormData } from "~/components/maverx/types";
 import { Button } from "~/components/ui/button";
 import { Textarea } from "~/components/ui/textarea";
 
+export interface GeneratedQuestion {
+  id: string;
+  question: string;
+}
+
 export interface FollowUpQuestionsProps {
   intakeData: IntakeFormData;
+  questions: GeneratedQuestion[] | null;
   onComplete: (answers: Record<string, string>) => void;
 }
 
-export function FollowUpQuestions({ intakeData, onComplete }: FollowUpQuestionsProps) {
-  const questions = [
-    {
-      id: "prior_experience",
-      label: `What prior experience do participants have with ${intakeData.topic}?`,
-      placeholder: "e.g. They've used basic concepts but never applied them in production",
-    },
-    {
-      id: "tools_scenarios",
-      label: "Are there specific tools, systems, or scenarios you want covered?",
-      placeholder: "e.g. We use Jira and Confluence, focus on sprint ceremonies",
-    },
-    {
-      id: "challenges",
-      label: "What is the biggest challenge participants face today?",
-      placeholder: "e.g. They struggle with prioritisation under pressure",
-    },
-    {
-      id: "examples",
-      label: "Any examples or case studies you'd like included?",
-      placeholder: "e.g. The Q3 incident where we missed the release deadline",
-    },
-  ];
-
-  const [answers, setAnswers] = useState<Record<string, string>>(
-    Object.fromEntries(questions.map((q) => [q.id, ""])),
-  );
+export function FollowUpQuestions({ intakeData: _intakeData, questions, onComplete }: FollowUpQuestionsProps) {
+  const [answers, setAnswers] = useState<Record<string, string>>({});
 
   function updateAnswer(id: string, value: string) {
     setAnswers((prev) => ({ ...prev, [id]: value }));
@@ -49,6 +30,8 @@ export function FollowUpQuestions({ intakeData, onComplete }: FollowUpQuestionsP
     e.preventDefault();
     onComplete(answers);
   }
+
+  const isLoading = questions === null;
 
   return (
     <div className="flex flex-1 items-start justify-center overflow-y-auto px-4 py-6 sm:px-6 sm:py-10">
@@ -72,26 +55,45 @@ export function FollowUpQuestions({ intakeData, onComplete }: FollowUpQuestionsP
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          {questions.map((q, i) => (
-            <motion.div
-              key={q.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.07, type: "spring", stiffness: 400, damping: 30 }}
-              className="flex flex-col gap-1.5"
-            >
-              <label className="text-sm font-medium">{q.label}</label>
-              <Textarea
-                value={answers[q.id]}
-                onChange={(e) => updateAnswer(q.id, e.target.value)}
-                placeholder={q.placeholder}
-                className="min-h-[72px] resize-none text-sm"
-                rows={2}
-              />
-            </motion.div>
-          ))}
+          {isLoading
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05, type: "spring", stiffness: 400, damping: 30 }}
+                  className="flex flex-col gap-1.5"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="bg-muted h-4 w-4 animate-pulse rounded-full" />
+                    <div className="bg-muted h-4 w-3/4 animate-pulse rounded-md" />
+                  </div>
+                  <div className="bg-muted min-h-18 animate-pulse rounded-md" />
+                </motion.div>
+              ))
+            : questions.map((q, i) => (
+                <motion.div
+                  key={q.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.08, type: "spring", stiffness: 400, damping: 30 }}
+                  className="flex flex-col gap-1.5"
+                >
+                  <label className="flex items-start gap-1.5 text-sm font-medium">
+                    <Sparkles className="text-primary mt-0.5 h-4 w-4 shrink-0" />
+                    {q.question}
+                  </label>
+                  <Textarea
+                    value={answers[q.id] ?? ""}
+                    onChange={(e) => updateAnswer(q.id, e.target.value)}
+                    placeholder="Share your thoughts…"
+                    className="min-h-18 resize-none text-sm"
+                    rows={2}
+                  />
+                </motion.div>
+              ))}
 
-          <Button type="submit" className="mt-2 w-full" size="lg">
+          <Button type="submit" className="mt-2 w-full" size="lg" disabled={isLoading}>
             Generate Slides →
           </Button>
         </form>
