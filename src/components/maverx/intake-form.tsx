@@ -1,6 +1,6 @@
 "use client";
 
-import { GraduationCap, Paperclip, Upload, X } from "lucide-react";
+import { Paperclip, Upload, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useRef, useState } from "react";
 
@@ -109,19 +109,7 @@ export function IntakeForm({ onComplete }: IntakeFormProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
         className="w-full max-w-xl"
-      >
-        {/* Header */}
-        <div className="mb-8 flex items-center gap-3">
-          <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-xl">
-            <GraduationCap className="text-primary h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold">Set up your training</h1>
-            <p className="text-muted-foreground text-sm">
-              Fill in the details and I&apos;ll build your complete deck.
-            </p>
-          </div>
-        </div>
+      >        
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           {INTAKE_STEPS.map((step) => {

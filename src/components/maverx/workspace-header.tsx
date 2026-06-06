@@ -20,7 +20,7 @@ export interface WorkspaceHeaderProps {
 }
 
 const STEPS = [
-  { number: 1, label: "Training Details" },
+  { number: 1, label: "Set up your training" },
   { number: 2, label: "Refine" },
   { number: 3, label: "Your Slides" },
 ] as const;
